@@ -1,0 +1,193 @@
+@model BabaTrans.Models.Colis
+@{
+    ViewData["Title"] = "Colis #" + Model.Id + " - " + Model.CodeSuivi;
+    var badgeClass = Model.Statut switch {
+        BabaTrans.Models.StatutColis.Enregistre => "bt-badge-warning",
+        BabaTrans.Models.StatutColis.QRCodeGenere => "bt-badge-info",
+        BabaTrans.Models.StatutColis.EnTransit => "bt-badge-orange",
+        BabaTrans.Models.StatutColis.Arrive => "bt-badge-primary",
+        BabaTrans.Models.StatutColis.Livre => "bt-badge-accent",
+        BabaTrans.Models.StatutColis.Retourne => "bt-badge-danger",
+        _ => "bt-badge-primary"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1">
+            <i class="bi bi-box2-fill text-primary me-2"></i>Colis #@Model.Id
+            <span class="bt-badge @badgeClass ms-2">@Model.Statut</span>
+        </h4>
+        <div class="text-muted small">Code Unique : <span class="font-monospace text-light">@Model.CodeSuivi</span></div>
+    </div>
+    <div class="d-flex gap-2">
+        <button onclick="window.print()" class="bt-btn bt-btn-outline bt-btn-sm">
+            <i class="bi bi-printer"></i> Imprimer le Timbre
+        </button>
+        <a asp-action="Suivi" asp-route-code="@Model.CodeSuivi" class="bt-btn bt-btn-primary bt-btn-sm">
+            <i class="bi bi-upc-scan"></i> Page de Suivi
+        </a>
+        <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Liste</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Fiche Timbre QR-Code (Imprimable) -->
+    <div class="col-lg-5">
+        <div class="bt-card border-primary" id="printableStamp">
+            <div class="bt-card-header bg-primary bg-opacity-10">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-patch-check-fill text-accent fs-5"></i>
+                    <h5 class="mb-0">Timbre Officiel BABA-TRANS</h5>
+                </div>
+                <span class="badge bg-white border text-primary text-uppercase shadow-sm" style="font-size: 0.65rem;">RDC LOGISTICS</span>
+            </div>
+            <div class="bt-card-body text-center p-4">
+                @if (Model.TimbreQRCode != null && !string.IsNullOrEmpty(Model.TimbreQRCode.ImageBase64))
+                {
+                    <div class="bt-qr-code mb-3 p-2 bg-white d-inline-block rounded shadow">
+                        <img src="data:image/png;base64,@Model.TimbreQRCode.ImageBase64" alt="QR-Code Timbre" class="img-fluid" style="width: 200px; height: 200px;" />
+                    </div>
+                    <div class="font-monospace fw-bold text-dark fs-5 mb-1">@Model.CodeSuivi</div>
+                    <div class="text-muted small mb-3">Généré le @Model.TimbreQRCode.DateGeneration.ToString("dd/MM/yyyy HH:mm")</div>
+                    
+                    <div class="p-3 rounded bg-light border text-start small">
+                        <div class="row">
+                            <div class="col-6 text-muted">Supermarché :</div>
+                            <div class="col-6 text-end text-dark fw-semibold">@(Model.Commande?.Client?.NomSupermarche ?? "N/A")</div>
+                            <div class="col-6 text-muted">Destination :</div>
+                            <div class="col-6 text-end text-dark fw-semibold">@(Model.Commande?.VilleDestination ?? "N/A")</div>
+                            <div class="col-6 text-muted">Poids :</div>
+                            <div class="col-6 text-end text-primary fw-bold">@Model.Poids kg</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="py-5 text-muted">
+                        <i class="bi bi-qr-code fs-1 d-block mb-2"></i>
+                        Aucun timbre généré pour ce colis.
+                        <form asp-action="GenererQRCode" asp-route-id="@Model.Id" method="post" class="mt-3">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="bt-btn bt-btn-primary bt-btn-sm">
+                                <i class="bi bi-arrow-repeat"></i> Générer le Timbre QR
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Informations Détaillées & Livraisons -->
+    <div class="col-lg-7">
+        <div class="bt-card mb-4">
+            <div class="bt-card-header">
+                <h5>Détails Logistiques du Colis</h5>
+            </div>
+            <div class="bt-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted small text-uppercase">Description</dt>
+                    <dd class="col-sm-8 text-white">@Model.Description</dd>
+
+                    <dt class="col-sm-4 text-muted small text-uppercase">Poids</dt>
+                    <dd class="col-sm-8 text-accent fw-bold">@Model.Poids kg</dd>
+
+                    <dt class="col-sm-4 text-muted small text-uppercase">Commande</dt>
+                    <dd class="col-sm-8">
+                        <a asp-controller="Commande" asp-action="Details" asp-route-id="@Model.CommandeId" class="text-decoration-none">
+                            CMD-@Model.CommandeId (@(Model.Commande?.Client?.NomSupermarche ?? "Inconnu"))
+                        </a>
+                    </dd>
+
+                    <dt class="col-sm-4 text-muted small text-uppercase">Date Enregistrement</dt>
+                    <dd class="col-sm-8 text-white">@Model.DateEnregistrement.ToString("dd MMMM yyyy à HH:mm")</dd>
+
+                    <dt class="col-sm-4 text-muted small text-uppercase">Statut Actuel</dt>
+                    <dd class="col-sm-8"><span class="bt-badge @badgeClass">@Model.Statut</span></dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Livraisons / Scans associés -->
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-send text-accent me-2"></i>Affectation & Suivi des Scans Livreur</h5>
+                @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                {
+                    <a asp-controller="Livraison" asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
+                        <i class="bi bi-plus-lg"></i> Créer Expédition
+                    </a>
+                }
+            </div>
+            <div class="bt-card-body p-0">
+                <div class="table-responsive">
+                    <table class="bt-table">
+                        <thead>
+                            <tr>
+                                <th>Réf</th>
+                                <th>Livreur</th>
+                                <th>Véhicule</th>
+                                <th>Scan Départ</th>
+                                <th>Scan Arrivée</th>
+                                <th>Statut</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Livraisons != null && Model.Livraisons.Any())
+                            {
+                                foreach (var liv in Model.Livraisons)
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-white">#@liv.Id</td>
+                                        <td>
+                                            @if (liv.Livreur != null)
+                                            {
+                                                <span class="text-white"><i class="bi bi-person me-1"></i>@liv.Livreur.Prenom @liv.Livreur.Nom</span>
+                                                <div class="text-muted small">@liv.Livreur.Immatriculation</div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Non assigné</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (liv.MoyenTransport != null)
+                                            {
+                                                <span class="text-white"><i class="bi bi-truck text-primary me-1"></i>@liv.MoyenTransport.Type</span>
+                                                <div class="text-muted small font-monospace">@(liv.MoyenTransport.Immatriculation ?? "—")</div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@(liv.DateDepart.HasValue ? liv.DateDepart.Value.ToString("dd/MM HH:mm") : "—")</td>
+                                        <td>@(liv.DateArrivee.HasValue ? liv.DateArrivee.Value.ToString("dd/MM HH:mm") : "—")</td>
+                                        <td>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">@liv.Statut</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a asp-controller="Livraison" asp-action="Details" asp-route-id="@liv.Id" class="bt-btn bt-btn-outline bt-btn-sm">
+                                                <i class="bi bi-eye"></i> Gérer
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        Ce colis n'a pas encore fait l'objet d'une affectation de livraison.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

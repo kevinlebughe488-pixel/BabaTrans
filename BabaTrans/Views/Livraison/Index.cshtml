@@ -1,0 +1,120 @@
+@model IEnumerable<BabaTrans.Models.Livraison>
+@{
+    ViewData["Title"] = "Gestion des Livraisons & Tournées";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1"><i class="bi bi-send-check text-primary me-2"></i>Expéditions & Livraisons</h4>
+        <div class="text-muted small">Affectation des livreurs, scans au départ et confirmations à l'arrivée</div>
+    </div>
+    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+    {
+        <a asp-action="Create" class="bt-btn bt-btn-primary">
+            <i class="bi bi-plus-lg"></i> Affecter une Livraison
+        </a>
+    }
+</div>
+
+<div class="bt-card fade-in">
+    <div class="bt-card-body p-0">
+        <div class="table-responsive">
+            <table class="bt-table">
+                <thead>
+                    <tr>
+                        <th>N° Livr.</th>
+                        <th>Colis & Code</th>
+                        <th>Supermarché & Destination</th>
+                        <th>Livreur Assigné</th>
+                        <th>Véhicule</th>
+                        <th>Scan Départ</th>
+                        <th>Scan Arrivée</th>
+                        <th>Statut</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var liv in Model)
+                        {
+                            var badgeClass = liv.Statut switch {
+                                BabaTrans.Models.StatutLivraison.EnAttente => "bt-badge-warning",
+                                BabaTrans.Models.StatutLivraison.EnCours => "bt-badge-orange",
+                                BabaTrans.Models.StatutLivraison.Livree => "bt-badge-accent",
+                                BabaTrans.Models.StatutLivraison.Echouee => "bt-badge-danger",
+                                _ => "bt-badge-primary"
+                            };
+
+                            <tr>
+                                <td class="fw-bold text-white">#@liv.Id</td>
+                                <td>
+                                    <div class="fw-semibold text-white">Colis #@liv.ColisId</div>
+                                    <span class="badge bg-dark border border-secondary font-monospace text-light">@liv.Colis?.CodeSuivi</span>
+                                </td>
+                                <td>
+                                    <div class="text-white">@(liv.Colis?.Commande?.Client?.NomSupermarche ?? "Inconnu")</div>
+                                    <div class="text-accent small"><i class="bi bi-geo-alt me-1"></i>@(liv.Colis?.Commande?.VilleDestination ?? "—")</div>
+                                </td>
+                                <td>
+                                    @if (liv.Livreur != null)
+                                    {
+                                        <div class="fw-semibold text-white"><i class="bi bi-person me-1"></i>@liv.Livreur.Prenom @liv.Livreur.Nom</div>
+                                        <span class="badge bg-secondary-subtle text-light">@liv.Livreur.Immatriculation</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Non affecté</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (liv.MoyenTransport != null)
+                                    {
+                                        <div class="fw-semibold text-white"><i class="bi bi-truck me-1"></i>@liv.MoyenTransport.Type</div>
+                                        <span class="badge bg-primary-subtle text-light">@(liv.MoyenTransport.Immatriculation ?? "—")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @(liv.DateDepart.HasValue ? liv.DateDepart.Value.ToString("dd/MM/yyyy HH:mm") : "—")
+                                </td>
+                                <td>
+                                    @(liv.DateArrivee.HasValue ? liv.DateArrivee.Value.ToString("dd/MM/yyyy HH:mm") : "—")
+                                </td>
+                                <td>
+                                    <span class="bt-badge @badgeClass">@liv.Statut</span>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="Details" asp-route-id="@liv.Id" class="bt-btn bt-btn-outline bt-btn-sm">
+                                        <i class="bi bi-qr-code-scan"></i> Traiter / Scans
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="bt-empty-state">
+                                    <i class="bi bi-send-check"></i>
+                                    <h5>Aucune expédition en cours</h5>
+                                    <p>Les agents peuvent affecter les colis préparés à des livreurs pour lancer les acheminements.</p>
+                                    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                                    {
+                                        <a asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
+                                            <i class="bi bi-plus-lg"></i> Affecter une livraison
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

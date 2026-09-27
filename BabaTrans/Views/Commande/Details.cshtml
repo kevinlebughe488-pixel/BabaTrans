@@ -1,0 +1,205 @@
+@model BabaTrans.Models.Commande
+@inject BabaTrans.Services.TarificationService Tarification
+@{
+    ViewData["Title"] = "Détail Commande #CMD-" + Model.Id;
+    var badgeClass = Model.Statut switch {
+        BabaTrans.Models.StatutCommande.EnAttente => "bt-badge-warning",
+        BabaTrans.Models.StatutCommande.EnCours => "bt-badge-orange",
+        BabaTrans.Models.StatutCommande.Livree => "bt-badge-accent",
+        BabaTrans.Models.StatutCommande.Annulee => "bt-badge-danger",
+        _ => "bt-badge-primary"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1">
+            <i class="bi bi-box-seam text-primary me-2"></i>Commande #CMD-@Model.Id
+            <span class="bt-badge @badgeClass ms-2">@Model.Statut</span>
+        </h4>
+        <div class="text-muted small">Créée le @Model.DateCommande.ToString("dd MMMM yyyy à HH:mm")</div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-pencil"></i> Modifier</a>
+            <a asp-controller="Colis" asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm"><i class="bi bi-plus-lg"></i> Ajouter un Colis</a>
+        }
+        <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="bt-card h-100">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-shop text-primary me-2"></i>Supermarché Expéditeur</h5>
+            </div>
+            <div class="bt-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted small text-uppercase">Nom</dt>
+                    <dd class="col-sm-7 fw-bold text-white">@(Model.Client?.NomSupermarche ?? "Inconnu")</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Adresse</dt>
+                    <dd class="col-sm-7 text-white">@(Model.Client?.Adresse ?? "—")</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Téléphone</dt>
+                    <dd class="col-sm-7 text-white">@(Model.Client?.Telephone ?? "—")</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Destination</dt>
+                    <dd class="col-sm-7 text-white"><span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-geo-alt-fill me-1"></i>@Model.VilleDestination</span></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="bt-card h-100">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-geo-alt-fill text-accent me-2"></i>Trajet & Moyen de Transport</h5>
+            </div>
+            <div class="bt-card-body">
+                @if (Model.Trajet != null)
+                {
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-muted small text-uppercase">Itinéraire</dt>
+                        <dd class="col-sm-7 fw-bold text-accent">@Model.Trajet.VilleDepart → @Model.Trajet.VilleArrivee</dd>
+
+                        <dt class="col-sm-5 text-muted small text-uppercase">Distance Estimée</dt>
+                        <dd class="col-sm-7 text-white">@(Model.Trajet.DistanceKm.HasValue ? $"{Model.Trajet.DistanceKm} km" : "Non spécifiée")</dd>
+
+                        @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                        {
+                            <dt class="col-sm-5 text-muted small text-uppercase">Moyen de transport</dt>
+                            <dd class="col-sm-7 text-white">
+                                @if (Model.Trajet.MoyenTransport != null)
+                                {
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                        <i class="bi bi-truck me-1"></i>@Model.Trajet.MoyenTransport.Type (Capacité: @Model.Trajet.MoyenTransport.Capacite kg)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Aucun véhicule assigné</span>
+                                }
+                            </dd>
+                        }
+                    </dl>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-signpost-split fs-2 d-block mb-2"></i>
+                        Aucun trajet affecté pour l'instant.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-receipt text-warning me-2"></i>Estimation tarifaire</h5>
+                <span class="bt-badge bt-badge-accent">Calcul automatique</span>
+            </div>
+            <div class="bt-card-body">
+                @{ var estimation = Tarification.Calculer(Model); }
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <div class="text-muted small text-uppercase">Poids total</div>
+                        <div class="fs-5 fw-bold text-white">@estimation.PoidsTotalKg.ToString("N2") kg</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small text-uppercase">Destination</div>
+                        <div class="text-white">@Model.VilleDestination</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small text-uppercase">Forfait + destination</div>
+                        <div class="text-white">@((estimation.ForfaitBase + estimation.SupplementDestination).ToString("N0")) FC</div>
+                    </div>
+                    <div class="col-md-3 text-md-end">
+                        <div class="text-muted small text-uppercase">Tarif estimé</div>
+                        <div class="fs-4 fw-bold text-info">@estimation.Total.ToString("N0") FC</div>
+                    </div>
+                </div>
+                <div class="text-muted small mt-3">Le tarif est recalculé après chaque ajout ou modification de colis.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Colis de la commande -->
+<div class="bt-card">
+    <div class="bt-card-header">
+        <h5><i class="bi bi-boxes text-warning me-2"></i>Colis Inclus dans cette Commande (@(Model.Colis?.Count ?? 0))</h5>
+    </div>
+    <div class="bt-card-body p-0">
+        <div class="table-responsive">
+            <table class="bt-table">
+                <thead>
+                    <tr>
+                        <th>N° Colis</th>
+                        <th>Code Suivi</th>
+                        <th>Description</th>
+                        <th>Poids</th>
+                        <th>Timbre QR</th>
+                        <th>Statut</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Colis != null && Model.Colis.Any())
+                    {
+                        foreach (var colis in Model.Colis)
+                        {
+                            <tr>
+                                <td class="fw-bold text-white">#@colis.Id</td>
+                                <td>
+                                    <span class="badge bg-dark border border-secondary font-monospace text-light">@colis.CodeSuivi</span>
+                                </td>
+                                <td>@colis.Description</td>
+                                <td>@colis.Poids kg</td>
+                                <td>
+                                    @if (colis.TimbreQRCode != null)
+                                    {
+                                        <span class="bt-badge bt-badge-accent"><i class="bi bi-qr-code"></i> Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bt-badge bt-badge-warning">Non généré</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="bt-badge bt-badge-primary">@colis.Statut</span>
+                                </td>
+                                <td class="text-end">
+                                    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                                    {
+                                        <a asp-controller="Colis" asp-action="Details" asp-route-id="@colis.Id" class="bt-btn bt-btn-outline bt-btn-sm">
+                                            <i class="bi bi-eye"></i> Voir Colis & Timbre
+                                        </a>
+                                    }
+                                    else if (!string.IsNullOrEmpty(colis.CodeSuivi))
+                                    {
+                                        <a asp-controller="Colis" asp-action="Suivi" asp-route-code="@colis.CodeSuivi" class="bt-btn bt-btn-outline bt-btn-sm">
+                                            <i class="bi bi-search"></i> Suivre
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                Aucun colis associé à cette commande. Cliquez sur "Ajouter un Colis" pour commencer.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,104 @@
+@model BabaTrans.ViewModels.RegisterViewModel
+@{
+    ViewData["Title"] = "Nouvel Utilisateur";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="bt-card fade-in">
+            <div class="bt-card-header">
+                <div>
+                    <h5><i class="bi bi-person-plus-fill me-2 text-primary"></i>Créer un Compte Utilisateur (RBAC)</h5>
+                    <small class="text-muted">Attribuez un rôle spécifique pour définir les droits d'accès</small>
+                </div>
+                <a asp-action="Users" class="bt-btn bt-btn-outline bt-btn-sm">
+                    <i class="bi bi-arrow-left"></i> Retour à la liste
+                </a>
+            </div>
+            <div class="bt-card-body">
+                <form asp-action="Register" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Nom" class="bt-form-label"></label>
+                            <input asp-for="Nom" class="bt-form-control" placeholder="Nom de famille" />
+                            <span asp-validation-for="Nom" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Prenom" class="bt-form-label"></label>
+                            <input asp-for="Prenom" class="bt-form-control" placeholder="Prénom" />
+                            <span asp-validation-for="Prenom" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Email" class="bt-form-label"></label>
+                            <input asp-for="Email" class="bt-form-control" placeholder="nom@babatrans.cd" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Password" class="bt-form-label"></label>
+                            <input asp-for="Password" class="bt-form-control" placeholder="Min. 6 caractères" />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ConfirmPassword" class="bt-form-label"></label>
+                            <input asp-for="ConfirmPassword" class="bt-form-control" placeholder="Confirmer mot de passe" />
+                            <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label asp-for="Role" class="bt-form-label"></label>
+                            <select asp-for="Role" class="bt-form-control" id="roleSelector">
+                                <option value="">-- Sélectionnez un rôle RBAC --</option>
+                                <option value="Administrateur">Administrateur (Accès Total & Rapports)</option>
+                                <option value="Agent">Agent BABA-Trans (Colis, Commandes, Timbres)</option>
+                                <option value="Livreur">Livreur (Scans, Tournées & Confirmation)</option>
+                                <option value="Client">Client / Supermarché (Commandes & suivi de ses expéditions)</option>
+                            </select>
+                            <span asp-validation-for="Role" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 role-field" id="matriculeField" style="display:none;">
+                            <label asp-for="Matricule" class="bt-form-label">Matricule Agent</label>
+                            <input asp-for="Matricule" class="bt-form-control" placeholder="Ex: AGT-2026-09" />
+                            <span asp-validation-for="Matricule" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 role-field" id="immatField" style="display:none;">
+                            <label asp-for="Immatriculation" class="bt-form-label">Immatriculation / Matricule Livreur</label>
+                            <input asp-for="Immatriculation" class="bt-form-control" placeholder="Ex: LIV-KIN-004" />
+                            <span asp-validation-for="Immatriculation" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                        <a asp-action="Users" class="bt-btn bt-btn-outline">Annuler</a>
+                        <button type="submit" class="bt-btn bt-btn-primary">
+                            <i class="bi bi-check2-circle"></i> Créer l'utilisateur
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const roleSel = document.getElementById('roleSelector');
+        const matField = document.getElementById('matriculeField');
+        const immatField = document.getElementById('immatField');
+
+        function updateFields() {
+            matField.style.display = roleSel.value === 'Agent' ? 'block' : 'none';
+            immatField.style.display = roleSel.value === 'Livreur' ? 'block' : 'none';
+        }
+
+        roleSel.addEventListener('change', updateFields);
+        updateFields();
+    </script>
+}

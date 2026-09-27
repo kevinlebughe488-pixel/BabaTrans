@@ -1,0 +1,130 @@
+@model IEnumerable<BabaTrans.Models.Commande>
+@inject BabaTrans.Services.TarificationService Tarification
+@{
+    ViewData["Title"] = "Gestion des Commandes";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        @if (User.IsInRole("Client"))
+        {
+            <h4 class="text-white fw-bold mb-1"><i class="bi bi-bag-check-fill text-primary me-2"></i>Mes commandes</h4>
+            <div class="text-muted small">Suivi de vos expéditions déposées auprès de BABA-Trans</div>
+        }
+        else
+        {
+            <h4 class="text-white fw-bold mb-1"><i class="bi bi-box-seam text-primary me-2"></i>Commandes des Supermarchés</h4>
+            <div class="text-muted small">Gestion des expéditions de marchandises vers les différentes villes de la RDC</div>
+        }
+    </div>
+    <a asp-action="Create" class="bt-btn bt-btn-primary">
+        <i class="bi bi-plus-lg"></i> Déposer une Commande
+    </a>
+</div>
+
+<div class="bt-card fade-in">
+    <div class="bt-card-body p-0">
+        <div class="table-responsive">
+            <table class="bt-table">
+                <thead>
+                    <tr>
+                        <th>N° Commande</th>
+                        @if (!User.IsInRole("Client"))
+                        {
+                            <th>Supermarché (Client)</th>
+                        }
+                        <th>Destination</th>
+                        <th>Trajet Affecté</th>
+                        <th>Nb Colis</th>
+                        <th>Tarif estimé</th>
+                        <th>Date</th>
+                        <th>Statut</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var cmd in Model)
+                        {
+                            var badgeClass = cmd.Statut switch {
+                                BabaTrans.Models.StatutCommande.EnAttente => "bt-badge-warning",
+                                BabaTrans.Models.StatutCommande.EnCours => "bt-badge-orange",
+                                BabaTrans.Models.StatutCommande.Livree => "bt-badge-accent",
+                                BabaTrans.Models.StatutCommande.Annulee => "bt-badge-danger",
+                                _ => "bt-badge-primary"
+                            };
+
+                            <tr>
+                                <td class="fw-bold text-white">CMD-@cmd.Id</td>
+                                @if (!User.IsInRole("Client"))
+                                {
+                                    <td>
+                                        <div class="fw-semibold text-white">@(cmd.Client?.NomSupermarche ?? "Inconnu")</div>
+                                        <div class="text-muted small">@cmd.Client?.Telephone</div>
+                                    </td>
+                                }
+                                <td>
+                                    <span class="text-white"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@cmd.VilleDestination</span>
+                                </td>
+                                <td>
+                                    @if (cmd.Trajet != null)
+                                    {
+                                        <span class="small text-light">@cmd.Trajet.VilleDepart → @cmd.Trajet.VilleArrivee</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Non affecté</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                        @(cmd.Colis?.Count ?? 0) colis
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold text-info">@Tarification.Calculer(cmd).Total.ToString("N0") FC</span>
+                                </td>
+                                <td>@cmd.DateCommande.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <span class="bt-badge @badgeClass">@cmd.Statut</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        <a asp-action="Details" asp-route-id="@cmd.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Détails">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@cmd.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Modifier">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a asp-controller="Colis" asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm" title="Ajouter un colis">
+                                                <i class="bi bi-plus-square"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="@(User.IsInRole("Client") ? 8 : 9)" class="text-center py-5">
+                                <div class="bt-empty-state">
+                                    <i class="bi bi-box-seam"></i>
+                                    <h5>Aucune commande enregistrée</h5>
+                                    <p>Créez la première commande pour commencer le processus de livraison.</p>
+                                    <a asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
+                                        <i class="bi bi-plus-lg"></i> Déposer une commande
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

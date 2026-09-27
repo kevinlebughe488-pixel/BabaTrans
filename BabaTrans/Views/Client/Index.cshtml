@@ -1,0 +1,98 @@
+@model IEnumerable<BabaTrans.Models.Client>
+@{
+    ViewData["Title"] = "Gestion des Supermarchés Partenaires";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1"><i class="bi bi-shop text-primary me-2"></i>Supermarchés Partenaires</h4>
+        <div class="text-muted small">Gestion des clients expéditeurs et récepteurs sur le territoire congolais</div>
+    </div>
+    <a asp-action="Create" class="bt-btn bt-btn-primary">
+        <i class="bi bi-plus-lg"></i> Nouveau Supermarché
+    </a>
+</div>
+
+<div class="bt-card fade-in">
+    <div class="bt-card-body p-0">
+        <div class="table-responsive">
+            <table class="bt-table">
+                <thead>
+                    <tr>
+                        <th>Supermarché</th>
+                        <th>Adresse</th>
+                        <th>Téléphone</th>
+                        <th>Contact</th>
+                        <th>Commandes</th>
+                        <th>Statut</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var client in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-white">@client.NomSupermarche</div>
+                                    <div class="text-muted small">@client.Email</div>
+                                </td>
+                                <td>@client.Adresse</td>
+                                <td><i class="bi bi-telephone text-muted me-1"></i>@client.Telephone</td>
+                                <td>@(client.PersonneContact ?? "—")</td>
+                                <td>
+                                    <span class="badge bg-secondary">@(client.Commandes?.Count ?? 0) commandes</span>
+                                </td>
+                                <td>
+                                    @if (client.EstActif)
+                                    {
+                                        <span class="bt-badge bt-badge-accent">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bt-badge bt-badge-danger">Inactif</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        <a asp-action="Details" asp-route-id="@client.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Détails">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@client.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Modifier">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @if (User.IsInRole("Administrateur") && client.EstActif)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@client.Id" method="post" class="d-inline" onsubmit="return confirm('Désactiver ce client ?');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="bt-btn bt-btn-outline bt-btn-sm text-danger" title="Désactiver">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="bt-empty-state">
+                                    <i class="bi bi-shop"></i>
+                                    <h5>Aucun supermarché enregistré</h5>
+                                    <p>Commencez par ajouter les supermarchés clients pour enregistrer leurs commandes.</p>
+                                    <a asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
+                                        <i class="bi bi-plus-lg"></i> Ajouter un client
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

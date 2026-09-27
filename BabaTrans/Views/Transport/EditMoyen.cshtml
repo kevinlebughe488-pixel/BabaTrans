@@ -1,0 +1,64 @@
+@model BabaTrans.Models.MoyenTransport
+@{
+    ViewData["Title"] = "Modifier le Véhicule";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="bt-card fade-in">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-pencil-square text-primary me-2"></i>Modifier @Model.Type</h5>
+                <a asp-action="Moyens" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
+            </div>
+            <div class="bt-card-body">
+                <form asp-action="EditMoyen" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
+
+                    <div class="bt-form-group">
+                        <label asp-for="Type" class="bt-form-label"></label>
+                        <input asp-for="Type" class="bt-form-control" />
+                        <span asp-validation-for="Type" class="text-danger"></span>
+                    </div>
+
+                    <div class="bt-form-group">
+                        <label asp-for="Immatriculation" class="bt-form-label"></label>
+                        <input asp-for="Immatriculation" class="bt-form-control" />
+                        <span asp-validation-for="Immatriculation" class="text-danger"></span>
+                    </div>
+
+                    <div class="bt-form-group">
+                        <label asp-for="Capacite" class="bt-form-label">Capacité (kg)</label>
+                        <input asp-for="Capacite" class="bt-form-control" type="number" step="10" />
+                        <span asp-validation-for="Capacite" class="text-danger"></span>
+                    </div>
+
+                    <div class="bt-form-group">
+                        <label asp-for="EstDisponible" class="bt-form-label">Disponibilité</label>
+                        <select asp-for="EstDisponible" class="bt-form-control">
+                            <option value="true">Disponible</option>
+                            <option value="false">En maintenance / Indisponible</option>
+                        </select>
+                    </div>
+
+                    <div class="bt-form-group">
+                        <label asp-for="Description" class="bt-form-label"></label>
+                        <textarea asp-for="Description" class="bt-form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top border-secondary-subtle">
+                        <a asp-action="Moyens" class="bt-btn bt-btn-outline">Annuler</a>
+                        <button type="submit" class="bt-btn bt-btn-primary">
+                            <i class="bi bi-save"></i> Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

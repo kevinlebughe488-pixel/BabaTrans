@@ -1,0 +1,73 @@
+@model BabaTrans.Models.Client
+@{
+    ViewData["Title"] = "Modifier le Supermarché";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="bt-card fade-in">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-pencil-square text-primary me-2"></i>Modifier @Model.NomSupermarche</h5>
+                <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
+            </div>
+            <div class="bt-card-body">
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="DateCreation" />
+                    <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label asp-for="NomSupermarche" class="bt-form-label"></label>
+                            <input asp-for="NomSupermarche" class="bt-form-control" />
+                            <span asp-validation-for="NomSupermarche" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="EstActif" class="bt-form-label">Statut</label>
+                            <select asp-for="EstActif" class="bt-form-control">
+                                <option value="true">Actif</option>
+                                <option value="false">Inactif</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Telephone" class="bt-form-label"></label>
+                            <input asp-for="Telephone" class="bt-form-control" />
+                            <span asp-validation-for="Telephone" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="bt-form-label"></label>
+                            <input asp-for="Email" class="bt-form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="PersonneContact" class="bt-form-label"></label>
+                            <input asp-for="PersonneContact" class="bt-form-control" />
+                            <span asp-validation-for="PersonneContact" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label asp-for="Adresse" class="bt-form-label"></label>
+                            <textarea asp-for="Adresse" class="bt-form-control" rows="3"></textarea>
+                            <span asp-validation-for="Adresse" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                        <a asp-action="Index" class="bt-btn bt-btn-outline">Annuler</a>
+                        <button type="submit" class="bt-btn bt-btn-primary">
+                            <i class="bi bi-check-lg"></i> Enregistrer les modifications
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

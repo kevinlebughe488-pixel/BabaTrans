@@ -1,0 +1,64 @@
+@model IEnumerable<BabaTrans.Models.MoyenTransport>
+@{
+    ViewData["Title"] = "Moyens de Transport";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1"><i class="bi bi-truck-front-fill text-primary me-2"></i>Flotte & Véhicules</h4>
+        <div class="text-muted small">Camions, camionnettes et motos pour le réseau inter-villes et urbain en RDC</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Trajets" class="bt-btn bt-btn-outline">
+            <i class="bi bi-geo-alt"></i> Voir les Trajets
+        </a>
+        <a asp-action="CreateMoyen" class="bt-btn bt-btn-primary">
+            <i class="bi bi-plus-lg"></i> Nouveau Véhicule
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    @if (Model != null && Model.Any())
+    {
+        foreach (var m in Model)
+        {
+            <div class="col-md-6 col-lg-3">
+                <div class="bt-card h-100">
+                    <div class="bt-card-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-truck fs-5 text-accent"></i>
+                            <h5 class="mb-0">@m.Type</h5>
+                        </div>
+                        @if (m.EstDisponible)
+                        {
+                            <span class="bt-badge bt-badge-accent">Dispo</span>
+                        }
+                        else
+                        {
+                            <span class="bt-badge bt-badge-danger">Indispo</span>
+                        }
+                    </div>
+                    <div class="bt-card-body">
+                        <div class="mb-3">
+                            <div class="text-muted small text-uppercase">Capacité Maximale</div>
+                            <div class="fs-4 fw-bold text-white">@m.Capacite.ToString("N0") <span class="fs-6 text-muted">kg</span></div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="text-muted small text-uppercase">Immatriculation</div>
+                            <div class="font-monospace text-light">@(m.Immatriculation ?? "Standard")</div>
+                        </div>
+                        <div class="text-muted small">
+                            @(m.Description ?? "Véhicule affecté à la flotte BABA-Trans.")
+                        </div>
+                    </div>
+                    <div class="p-3 border-top border-secondary-subtle text-end">
+                        <a asp-action="EditMoyen" asp-route-id="@m.Id" class="bt-btn bt-btn-outline bt-btn-sm">
+                            <i class="bi bi-pencil"></i> Modifier
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

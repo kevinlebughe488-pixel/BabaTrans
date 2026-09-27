@@ -1,0 +1,105 @@
+@model BabaTrans.Models.Client
+@{
+    ViewData["Title"] = "Fiche Supermarché - " + Model.NomSupermarche;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1"><i class="bi bi-shop text-primary me-2"></i>@Model.NomSupermarche</h4>
+        <div class="text-muted small">Partenaire client depuis le @Model.DateCreation.ToString("dd MMMM yyyy")</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="bt-btn bt-btn-primary bt-btn-sm"><i class="bi bi-pencil"></i> Modifier</a>
+        <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Liste</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5>Coordonnées</h5>
+            </div>
+            <div class="bt-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted small text-uppercase">Adresse</dt>
+                    <dd class="col-sm-7 text-white">@Model.Adresse</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Téléphone</dt>
+                    <dd class="col-sm-7 text-white">@Model.Telephone</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Email</dt>
+                    <dd class="col-sm-7 text-white">@(Model.Email ?? "—")</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Contact</dt>
+                    <dd class="col-sm-7 text-white">@(Model.PersonneContact ?? "—")</dd>
+
+                    <dt class="col-sm-5 text-muted small text-uppercase">Statut</dt>
+                    <dd class="col-sm-7">
+                        @if (Model.EstActif)
+                        {
+                            <span class="bt-badge bt-badge-accent">Actif</span>
+                        }
+                        else
+                        {
+                            <span class="bt-badge bt-badge-danger">Inactif</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5>Historique des Commandes (@(Model.Commandes?.Count ?? 0))</h5>
+                <a asp-controller="Commande" asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
+                    <i class="bi bi-plus-lg"></i> Nouvelle Commande
+                </a>
+            </div>
+            <div class="bt-card-body p-0">
+                <div class="table-responsive">
+                    <table class="bt-table">
+                        <thead>
+                            <tr>
+                                <th>Réf</th>
+                                <th>Date</th>
+                                <th>Destination</th>
+                                <th>Statut</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Commandes != null && Model.Commandes.Any())
+                            {
+                                foreach (var cmd in Model.Commandes.OrderByDescending(c => c.DateCommande))
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-white">CMD-@cmd.Id</td>
+                                        <td>@cmd.DateCommande.ToString("dd/MM/yyyy")</td>
+                                        <td><i class="bi bi-geo-alt text-primary me-1"></i>@cmd.VilleDestination</td>
+                                        <td>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">@cmd.Statut</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a asp-controller="Commande" asp-action="Details" asp-route-id="@cmd.Id" class="bt-btn bt-btn-outline bt-btn-sm">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">Aucune commande pour le moment.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

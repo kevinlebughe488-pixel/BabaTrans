@@ -1,0 +1,239 @@
+@model BabaTrans.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Tableau de Bord Logistique";
+}
+
+<!-- Welcome Header -->
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h3 class="text-white fw-bold mb-1">
+            Bienvenue, @ViewBag.UserName <span class="badge bg-primary fs-6 align-middle ms-2">@ViewBag.UserRole</span>
+        </h3>
+        @if (User.IsInRole("Client"))
+        {
+            <p class="text-muted mb-0">Espace supermarché : déposez vos commandes et suivez vos propres expéditions.</p>
+        }
+        else if (User.IsInRole("Livreur"))
+        {
+            <p class="text-muted mb-0">Espace livreur : scans de départ, d'arrivée et confirmation de remise.</p>
+        }
+        else
+        {
+            <p class="text-muted mb-0">Plateforme centrale de gestion logistique et traçabilité par QR-code BABA-Trans RDC</p>
+        }
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-white border text-dark px-3 py-2 shadow-sm">
+            <i class="bi bi-clock me-1 text-primary"></i> @DateTime.Now.ToString("dddd d MMMM yyyy")
+        </span>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+    {
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-primary">
+                <div class="stat-icon">
+                    <i class="bi bi-shop"></i>
+                </div>
+                <div class="stat-value">@Model.TotalClients</div>
+                <div class="stat-label">Supermarchés Partenaires</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="stat-value">@Model.CommandesEnAttente</div>
+                <div class="stat-label">Commandes En Attente</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-orange">
+                <div class="stat-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="stat-value">@Model.ColisEnTransit</div>
+                <div class="stat-label">Colis En Transit (RDC)</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-accent">
+                <div class="stat-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <div class="stat-value">@Model.ColisLivres</div>
+                <div class="stat-label">Colis Livrés & Confirmés</div>
+            </div>
+        </div>
+    }
+    else if (User.IsInRole("Livreur"))
+    {
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-primary">
+                <div class="stat-icon">
+                    <i class="bi bi-send-check"></i>
+                </div>
+                <div class="stat-value">@Model.TotalLivraisons</div>
+                <div class="stat-label">Mes livraisons</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="stat-value">@Model.CommandesEnAttente</div>
+                <div class="stat-label">En attente de scan</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-orange">
+                <div class="stat-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="stat-value">@Model.ColisEnTransit</div>
+                <div class="stat-label">Tournées en cours</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-accent">
+                <div class="stat-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <div class="stat-value">@Model.LivraisonsConfirmees</div>
+                <div class="stat-label">Livraisons confirmées</div>
+            </div>
+        </div>
+    }
+    else if (User.IsInRole("Client"))
+    {
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-primary">
+                <div class="stat-icon">
+                    <i class="bi bi-bag-check"></i>
+                </div>
+                <div class="stat-value">@Model.TotalCommandes</div>
+                <div class="stat-label">Mes commandes</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="stat-value">@Model.CommandesEnAttente</div>
+                <div class="stat-label">Mes commandes en attente</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-orange">
+                <div class="stat-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="stat-value">@Model.ColisEnTransit</div>
+                <div class="stat-label">Mes colis en transit</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="bt-stat-card stat-accent">
+                <div class="stat-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <div class="stat-value">@Model.ColisLivres</div>
+                <div class="stat-label">Mes colis livrés</div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Quick Actions & Workflow Timeline -->
+<div class="row g-4 mb-4">
+    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+    {
+        <div class="col-lg-7">
+            <div class="bt-card h-100">
+                <div class="bt-card-header">
+                    <h5><i class="bi bi-diagram-3-fill text-primary me-2"></i>Flux Logistique </h5>
+                </div>
+                <div class="bt-card-body">
+                    <div class="bt-progress-tracker flex-wrap">
+                        <div class="bt-progress-step completed">
+                            <div class="step-icon"><i class="bi bi-cart-check"></i></div>
+                            <div class="step-label">1. Dépôt Commande<br><small class="text-muted">Client</small></div>
+                        </div>
+                        <div class="bt-progress-step completed">
+                            <div class="step-icon"><i class="bi bi-qr-code"></i></div>
+                            <div class="step-label">2. Timbre QR-Code<br><small class="text-muted">Système</small></div>
+                        </div>
+                        <div class="bt-progress-step active">
+                            <div class="step-icon"><i class="bi bi-truck-flatbed"></i></div>
+                            <div class="step-label">3. Affectation Flotte<br><small class="text-muted">Agent</small></div>
+                        </div>
+                        <div class="bt-progress-step">
+                            <div class="step-icon"><i class="bi bi-upc-scan"></i></div>
+                            <div class="step-label">4. Scan Départ<br><small class="text-muted">Livreur</small></div>
+                        </div>
+                        <div class="bt-progress-step">
+                            <div class="step-icon"><i class="bi bi-patch-check"></i></div>
+                            <div class="step-label">5. Livraison Confirmée<br><small class="text-muted">Livreur</small></div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info border-info-subtle mt-3 mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-lock-fill text-primary fs-4"></i>
+                            <div>
+                                <strong class="text-dark">Sécurité & Traçabilité Garantie :</strong>
+                                <div class="small text-muted">Chaque colis est associé à un timbre QR-Code unique vérifiable à chaque étape du transit inter-urbain.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="@(User.IsInRole("Administrateur") || User.IsInRole("Agent") ? "col-lg-5" : "col-12")">
+        <div class="bt-card h-100">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Actions Rapides par Rôle</h5>
+            </div>
+            <div class="bt-card-body d-flex flex-column gap-2 justify-content-center">
+                @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                {
+                    <a asp-controller="Colis" asp-action="Create" class="bt-btn bt-btn-primary">
+                        <i class="bi bi-box-arrow-in-down"></i> Enregistrer un colis & Générer QR-code
+                    </a>
+                    <a asp-controller="Commande" asp-action="Create" class="bt-btn bt-btn-outline">
+                        <i class="bi bi-receipt"></i> Créer une commande de supermarché
+                    </a>
+                    <a asp-controller="Livraison" asp-action="Create" class="bt-btn bt-btn-outline">
+                        <i class="bi bi-send"></i> Affecter un colis à un livreur / transport
+                    </a>
+                    <a asp-controller="Client" asp-action="Create" class="bt-btn bt-btn-outline">
+                        <i class="bi bi-shop-window"></i> Enregistrer un nouveau supermarché
+                    </a>
+                }
+                else if (User.IsInRole("Livreur"))
+                {
+                    <a asp-controller="Livraison" asp-action="Index" class="bt-btn bt-btn-accent">
+                        <i class="bi bi-upc-scan"></i> Mes livraisons & Scanners départ / arrivée
+                    </a>
+                }
+                else if (User.IsInRole("Client"))
+                {
+                    <a asp-controller="Commande" asp-action="Create" class="bt-btn bt-btn-primary">
+                        <i class="bi bi-plus-circle"></i> Déposer une nouvelle commande
+                    </a>
+                    <a asp-controller="Commande" asp-action="Index" class="bt-btn bt-btn-outline">
+                        <i class="bi bi-clock-history"></i> Historique de mes expéditions
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

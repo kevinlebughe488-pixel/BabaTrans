@@ -1,0 +1,178 @@
+@{
+    ViewData["Title"] = "Rapports & Statistiques SI";
+    var rapport = ViewBag.Rapport;
+    var dernieresCommandes = ViewBag.DernieresCommandes as List<BabaTrans.Models.Commande>;
+    var dernieresLivraisons = ViewBag.DernieresLivraisons as List<BabaTrans.Models.Livraison>;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="text-white fw-bold mb-1"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Rapports d'Activité & Indicateurs SI</h4>
+        <div class="text-muted small">Synthèse globale des performances du réseau logistique BABA-Trans en RDC</div>
+    </div>
+    <button onclick="window.print()" class="bt-btn bt-btn-outline">
+        <i class="bi bi-printer"></i> Imprimer le Rapport
+    </button>
+</div>
+
+<!-- Synthèse générale -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="bt-stat-card stat-primary">
+            <div class="stat-icon"><i class="bi bi-shop"></i></div>
+            <div class="stat-value">@rapport.TotalClients</div>
+            <div class="stat-label">Supermarchés Clients (@rapport.ClientsActifs actifs)</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bt-stat-card stat-warning">
+            <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
+            <div class="stat-value">@rapport.TotalCommandes</div>
+            <div class="stat-label">Commandes Enregistrées</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bt-stat-card stat-orange">
+            <div class="stat-icon"><i class="bi bi-qr-code"></i></div>
+            <div class="stat-value">@rapport.TotalColis</div>
+            <div class="stat-label">Colis avec Timbres QR</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bt-stat-card stat-accent">
+            <div class="stat-icon"><i class="bi bi-check2-all"></i></div>
+            <div class="stat-value">@rapport.LivraisonsConfirmees</div>
+            <div class="stat-label">Livraisons Réussies</div>
+        </div>
+    </div>
+</div>
+
+<!-- Répartition par état -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="bt-card h-100">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-pie-chart text-info me-2"></i>État des Commandes</h5>
+            </div>
+            <div class="bt-card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
+                    <span><i class="bi bi-hourglass-split text-warning me-2"></i>En attente de traitement</span>
+                    <span class="badge bg-warning text-dark fs-6">@rapport.CommandesEnAttente</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
+                    <span><i class="bi bi-truck text-primary me-2"></i>En cours d'acheminement</span>
+                    <span class="badge bg-primary fs-6">@rapport.CommandesEnCours</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded bg-dark border border-secondary">
+                    <span><i class="bi bi-check-circle text-accent me-2"></i>Livrées et conformes</span>
+                    <span class="badge bg-success fs-6">@rapport.CommandesLivrees</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="bt-card h-100">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-speedometer2 text-accent me-2"></i>Réseau & Moyens Matériels</h5>
+            </div>
+            <div class="bt-card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
+                    <span><i class="bi bi-geo-alt text-primary me-2"></i>Trajets et lignes inter-urbaines</span>
+                    <span class="badge bg-info fs-6">@rapport.TotalTrajets lignes</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
+                    <span><i class="bi bi-truck-front text-accent me-2"></i>Véhicules et flotte disponible</span>
+                    <span class="badge bg-accent text-dark fs-6" style="background-color: var(--bt-accent);">@rapport.TotalMoyensTransport véhicules</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded bg-dark border border-secondary">
+                    <span><i class="bi bi-boxes text-warning me-2"></i>Colis actuellement en transit</span>
+                    <span class="badge bg-warning text-dark fs-6">@rapport.ColisEnTransit colis</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dernières activités -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5>Dernières Commandes Passées</h5>
+            </div>
+            <div class="bt-card-body p-0">
+                <div class="table-responsive">
+                    <table class="bt-table">
+                        <thead>
+                            <tr>
+                                <th>Réf</th>
+                                <th>Client</th>
+                                <th>Date</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (dernieresCommandes != null && dernieresCommandes.Any())
+                            {
+                                foreach (var cmd in dernieresCommandes)
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-white">CMD-@cmd.Id</td>
+                                        <td>@(cmd.Client?.NomSupermarche ?? "Inconnu")</td>
+                                        <td>@cmd.DateCommande.ToString("dd/MM/yyyy")</td>
+                                        <td><span class="bt-badge bt-badge-primary">@cmd.Statut</span></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="4" class="text-center py-3 text-muted">Aucune commande</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5>Dernières Expéditions & Scans</h5>
+            </div>
+            <div class="bt-card-body p-0">
+                <div class="table-responsive">
+                    <table class="bt-table">
+                        <thead>
+                            <tr>
+                                <th>Livr.</th>
+                                <th>Colis</th>
+                                <th>Livreur</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (dernieresLivraisons != null && dernieresLivraisons.Any())
+                            {
+                                foreach (var liv in dernieresLivraisons)
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-white">#@liv.Id</td>
+                                        <td>Colis #@liv.ColisId</td>
+                                        <td>@(liv.Livreur != null ? $"{liv.Livreur.Prenom} {liv.Livreur.Nom}" : "—")</td>
+                                        <td><span class="bt-badge bt-badge-accent">@liv.Statut</span></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="4" class="text-center py-3 text-muted">Aucune expédition</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

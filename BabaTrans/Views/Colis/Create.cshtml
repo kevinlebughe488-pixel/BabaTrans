@@ -1,0 +1,67 @@
+@model BabaTrans.Models.Colis
+@{
+    ViewData["Title"] = "Enregistrer un Colis";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="bt-card fade-in">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-box-arrow-in-down text-primary me-2"></i>Enregistrer un Colis (Génération QR-Code automatique)</h5>
+                <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
+            </div>
+            <div class="bt-card-body">
+                <div class="alert alert-dark border-secondary mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-qr-code text-accent fs-3"></i>
+                        <div>
+                            <strong class="text-light">Timbre QR-Code Automatique :</strong>
+                            <div class="small text-muted">Dès la validation, le système va générer un timbre QR-Code crypté prêt à être imprimé et apposé sur le paquet.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label asp-for="CommandeId" class="bt-form-label">Commande Associée</label>
+                            <select asp-for="CommandeId" class="bt-form-control" asp-items="ViewBag.Commandes">
+                                <option value="">-- Sélectionnez la commande concernée --</option>
+                            </select>
+                            <span asp-validation-for="CommandeId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Poids" class="bt-form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="Poids" class="bt-form-control" type="number" step="0.1" placeholder="Ex: 25.5" />
+                                <span class="input-group-text bg-dark border-secondary text-muted">kg</span>
+                            </div>
+                            <span asp-validation-for="Poids" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label asp-for="Description" class="bt-form-label">Contenu / Description des Marchandises</label>
+                            <textarea asp-for="Description" class="bt-form-control" rows="3" placeholder="Ex: Cartons d'huile végétale, conserves alimentaires, produits laitiers..."></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                        <a asp-action="Index" class="bt-btn bt-btn-outline">Annuler</a>
+                        <button type="submit" class="bt-btn bt-btn-primary">
+                            <i class="bi bi-qr-code"></i> Enregistrer & Générer le Timbre QR
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,78 @@
+@model BabaTrans.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Connexion";
+    Layout = "_Layout";
+}
+
+<div class="bt-login-page">
+    <div class="bt-login-card fade-in">
+        <div class="login-logo">
+            <i class="bi bi-truck"></i>
+        </div>
+        <h2>BABA-TRANS</h2>
+        <div class="login-subtitle">Système Intégré de Suivi & Livraison de Colis</div>
+
+        <form asp-action="Login" asp-route-returnurl="@ViewData["ReturnUrl"]" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-3" role="alert"></div>
+
+            <div class="bt-form-group">
+                <label asp-for="Email" class="bt-form-label"><i class="bi bi-envelope me-1"></i> Adresse Email</label>
+                <input asp-for="Email" class="bt-form-control" placeholder="exemple@babatrans.cd" autocomplete="username" id="emailInput" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="bt-form-group">
+                <label asp-for="Password" class="bt-form-label"><i class="bi bi-shield-lock me-1"></i> Mot de passe</label>
+                <input asp-for="Password" class="bt-form-control" placeholder="••••••••" autocomplete="current-password" id="passwordInput" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label text-muted small">Rester connecté</label>
+                </div>
+            </div>
+
+            <button type="submit" class="bt-btn bt-btn-primary w-100 mb-3">
+                <i class="bi bi-box-arrow-in-right"></i> Se connecter
+            </button>
+        </form>
+
+        <div class="text-center pt-2 border-top border-secondary-subtle small text-muted">
+            Accès réservé aux profils BABA-Trans autorisés
+        </div>
+
+        <!-- Comptes de démonstration prédéfinis -->
+        <div class="mt-4 p-3 rounded-3" style="background: rgba(79, 70, 229, 0.08); border: 1px dashed var(--bt-border);">
+            <div class="text-uppercase small fw-bold text-muted mb-2 text-center" style="font-size: 0.72rem; letter-spacing: 1px;">
+                <i class="bi bi-lightning-charge-fill text-warning"></i> Comptes Démo (1-Click Fill)
+            </div>
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary text-start" onclick="fillCredentials('admin@babatrans.cd', 'Admin@123')">
+                    <span class="badge bg-primary me-1">Admin</span> admin@babatrans.cd / Admin@123
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-info text-start" onclick="fillCredentials('agent@babatrans.cd', 'Agent@123')">
+                    <span class="badge bg-info text-dark me-1">Agent</span> agent@babatrans.cd / Agent@123
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-success text-start" onclick="fillCredentials('livreur@babatrans.cd', 'Livreur@123')">
+                    <span class="badge bg-success me-1">Livreur</span> livreur@babatrans.cd / Livreur@123
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning text-start" onclick="fillCredentials('client@kinmarche.cd', 'Client@123')">
+                    <span class="badge bg-warning text-dark me-1">Client (Supermarché)</span> client@kinmarche.cd / Client@123
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function fillCredentials(email, pwd) {
+            document.getElementById('emailInput').value = email;
+            document.getElementById('passwordInput').value = pwd;
+        }
+    </script>
+}

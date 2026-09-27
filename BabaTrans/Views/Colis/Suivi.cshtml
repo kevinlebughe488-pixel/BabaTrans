@@ -1,0 +1,152 @@
+@model BabaTrans.ViewModels.SuiviColisViewModel
+@{
+    ViewData["Title"] = "Suivi en Direct de Colis";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <!-- Search Card -->
+        <div class="bt-card mb-4 text-center p-4 fade-in">
+            <div class="mb-3">
+                <i class="bi bi-upc-scan text-primary" style="font-size: 3rem;"></i>
+            </div>
+            <h3 class="text-white fw-bold mb-2">Suivi Numérique de Colis & Timbres QR</h3>
+            <p class="text-muted mb-4">Entrez votre numéro de suivi unique pour tracer votre cargaison à travers toute la RDC.</p>
+
+            <form asp-action="Suivi" method="get" class="row justify-content-center g-2">
+                <div class="col-md-7">
+                    <input type="text" name="code" value="@Model.CodeSuivi" class="bt-form-control text-center font-monospace fs-5 py-2" placeholder="Ex: BT-20260926-XXXXXXXX" required />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="bt-btn bt-btn-primary w-100 py-2 justify-content-center">
+                        <i class="bi bi-search"></i> Tracer le Colis
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        @if (Model.Recherche)
+        {
+            @if (Model.Colis != null)
+            {
+                var currentColis = Model.Colis;
+                var badgeClass = currentColis.Statut switch {
+                    BabaTrans.Models.StatutColis.Enregistre => "bt-badge-warning",
+                    BabaTrans.Models.StatutColis.QRCodeGenere => "bt-badge-info",
+                    BabaTrans.Models.StatutColis.EnTransit => "bt-badge-orange",
+                    BabaTrans.Models.StatutColis.Arrive => "bt-badge-primary",
+                    BabaTrans.Models.StatutColis.Livre => "bt-badge-accent",
+                    _ => "bt-badge-primary"
+                };
+
+                <div class="bt-card fade-in mb-4">
+                    <div class="bt-card-header bg-primary bg-opacity-10">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-box-seam-fill text-primary fs-4"></i>
+                            <div>
+                                <h5 class="mb-0 text-dark">Résultats du Traçage : <span class="font-monospace text-primary">@currentColis.CodeSuivi</span></h5>
+                                <small class="text-muted">Enregistré le @currentColis.DateEnregistrement.ToString("dd/MM/yyyy HH:mm")</small>
+                            </div>
+                        </div>
+                        <span class="bt-badge @badgeClass fs-6">@currentColis.Statut</span>
+                    </div>
+
+                    <div class="bt-card-body">
+                        <!-- Progress Stepper based on current status -->
+                        <div class="bt-progress-tracker my-3">
+                            <div class="bt-progress-step @(currentColis.Statut >= BabaTrans.Models.StatutColis.Enregistre ? "completed" : "")">
+                                <div class="step-icon"><i class="bi bi-clipboard-check"></i></div>
+                                <div class="step-label">Enregistré</div>
+                            </div>
+                            <div class="bt-progress-step @(currentColis.Statut >= BabaTrans.Models.StatutColis.QRCodeGenere ? "completed" : "")">
+                                <div class="step-icon"><i class="bi bi-qr-code"></i></div>
+                                <div class="step-label">Timbre QR Émis</div>
+                            </div>
+                            <div class="bt-progress-step @(currentColis.Statut >= BabaTrans.Models.StatutColis.EnTransit ? "completed" : (currentColis.Statut == BabaTrans.Models.StatutColis.QRCodeGenere ? "active" : ""))">
+                                <div class="step-icon"><i class="bi bi-truck"></i></div>
+                                <div class="step-label">En Transit</div>
+                            </div>
+                            <div class="bt-progress-step @(currentColis.Statut >= BabaTrans.Models.StatutColis.Arrive ? "completed" : "")">
+                                <div class="step-icon"><i class="bi bi-geo-alt"></i></div>
+                                <div class="step-label">Arrivé Destination</div>
+                            </div>
+                            <div class="bt-progress-step @(currentColis.Statut == BabaTrans.Models.StatutColis.Livre ? "completed" : "")">
+                                <div class="step-icon"><i class="bi bi-check-all"></i></div>
+                                <div class="step-label">Livraison Remise</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-4 mt-2">
+                            <div class="col-md-7">
+                                <h6 class="text-uppercase text-muted small fw-bold mb-3">Informations Expédition</h6>
+                                <div class="p-3 rounded bg-light border">
+                                    <div class="row g-2">
+                                        <div class="col-sm-5 text-muted">Supermarché Client :</div>
+                                        <div class="col-sm-7 fw-bold text-dark">@(currentColis.Commande?.Client?.NomSupermarche ?? "N/A")</div>
+
+                                        <div class="col-sm-5 text-muted">Ville de Destination :</div>
+                                        <div class="col-sm-7 text-primary fw-bold"><i class="bi bi-geo-alt me-1"></i>@(currentColis.Commande?.VilleDestination ?? "N/A")</div>
+
+                                        <div class="col-sm-5 text-muted">Marchandise / Contenu :</div>
+                                        <div class="col-sm-7 text-dark">@currentColis.Description</div>
+
+                                        <div class="col-sm-5 text-muted">Poids Total :</div>
+                                        <div class="col-sm-7 text-dark fw-bold">@currentColis.Poids kg</div>
+
+                                        @if (currentColis.Livraisons != null && currentColis.Livraisons.Any())
+                                        {
+                                            var activeLiv = currentColis.Livraisons.LastOrDefault();
+                                            if (activeLiv?.MoyenTransport != null)
+                                            {
+                                                <div class="col-sm-5 text-muted">Moyen de Transport :</div>
+                                                <div class="col-sm-7 text-dark fw-bold">
+                                                    <i class="bi bi-truck text-primary me-1"></i>@activeLiv.MoyenTransport.Type
+                                                    @if (!string.IsNullOrEmpty(activeLiv.MoyenTransport.Immatriculation))
+                                                    {
+                                                        <span class="font-monospace text-muted small">(@activeLiv.MoyenTransport.Immatriculation)</span>
+                                                    }
+                                                </div>
+                                            }
+                                            if (activeLiv?.Livreur != null)
+                                            {
+                                                <div class="col-sm-5 text-muted">Livreur Assigné :</div>
+                                                <div class="col-sm-7 text-dark fw-bold">
+                                                    <i class="bi bi-person-badge text-primary me-1"></i>@activeLiv.Livreur.Prenom @activeLiv.Livreur.Nom
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5 text-center">
+                                <h6 class="text-uppercase text-muted small fw-bold mb-3">Timbre Numérique</h6>
+                                @if (currentColis.TimbreQRCode != null && !string.IsNullOrEmpty(currentColis.TimbreQRCode.ImageBase64))
+                                {
+                                    <div class="p-2 bg-white d-inline-block rounded shadow">
+                                        <img src="data:image/png;base64,@currentColis.TimbreQRCode.ImageBase64" alt="QR Code" style="width: 150px; height: 150px;" />
+                                    </div>
+                                    <div class="mt-2 text-muted small">Scanner avec l'application mobile</div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted py-4">Pas de timbre QR disponible.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="bt-card text-center py-5 fade-in">
+                    <div class="bt-empty-state">
+                        <i class="bi bi-question-circle text-warning fs-1 d-block mb-3"></i>
+                        <h4 class="text-white">Aucun colis trouvé pour le code "@Model.CodeSuivi"</h4>
+                        <p class="text-muted">Vérifiez que vous avez saisi correctement le code au format BT-YYYYMMDD-XXXXXXXX.</p>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>

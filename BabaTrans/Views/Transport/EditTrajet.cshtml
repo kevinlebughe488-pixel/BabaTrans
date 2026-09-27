@@ -1,0 +1,64 @@
+@model BabaTrans.Models.Trajet
+@{
+    ViewData["Title"] = "Modifier le Trajet";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="bt-card fade-in">
+            <div class="bt-card-header">
+                <h5><i class="bi bi-pencil-square text-primary me-2"></i>Modifier Trajet #@Model.Id</h5>
+                <a asp-action="Trajets" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
+            </div>
+            <div class="bt-card-body">
+                <form asp-action="EditTrajet" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="VilleDepart" class="bt-form-label"></label>
+                            <input asp-for="VilleDepart" class="bt-form-control" />
+                            <span asp-validation-for="VilleDepart" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="VilleArrivee" class="bt-form-label"></label>
+                            <input asp-for="VilleArrivee" class="bt-form-control" />
+                            <span asp-validation-for="VilleArrivee" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="DistanceKm" class="bt-form-label"></label>
+                            <input asp-for="DistanceKm" class="bt-form-control" type="number" step="1" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="DureeEstimeeHeures" class="bt-form-label"></label>
+                            <input asp-for="DureeEstimeeHeures" class="bt-form-control" type="number" step="0.5" />
+                        </div>
+
+                        <div class="col-md-12">
+                            <label asp-for="MoyenTransportId" class="bt-form-label"></label>
+                            <select asp-for="MoyenTransportId" class="bt-form-control" asp-items="ViewBag.MoyensTransport">
+                                <option value="">-- Aucun véhicule assigné --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                        <a asp-action="Trajets" class="bt-btn bt-btn-outline">Annuler</a>
+                        <button type="submit" class="bt-btn bt-btn-primary">
+                            <i class="bi bi-save"></i> Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
