@@ -175,7 +175,7 @@ namespace BabaTrans.Controllers
                     poids = estimation.TarifPoids,
                     distance = estimation.TarifDistance,
                     ajustement = estimation.Ajustement,
-                    libelleAjustement = estimation.LibelleAjustement,
+                    minimumApplique = estimation.MinimumApplique,
                     total = estimation.Total,
                     poidsReel = estimation.PoidsReel,
                     poidsKg = estimation.PoidsTotalKg

@@ -36,7 +36,7 @@
                     <tr>
                         <th>N°</th>
                         <th>Colis</th>
-                        <th class="text-wrap">Supermarché & destination</th>
+                        <th class="text-wrap">Supermarché&nbsp;& destination</th>
                         <th>@(estPersonnel ? "Livreur & véhicule" : "Véhicule")</th>
                         <th>Départ / arrivée</th>
                         <th>Statut</th>
@@ -52,7 +52,7 @@
                                 <td class="fw-bold text-heading">#@liv.Id</td>
                                 <td>
                                     @* Sur téléphone, le tableau défile : le colis mène directement à la livraison et montre son statut. *@
-                                    <a asp-action="Details" asp-route-id="@liv.Id" class="fw-semibold text-heading text-decoration-none">Colis #@liv.ColisId</a>
+                                    <a asp-action="Details" asp-route-id="@liv.Id" class="fw-semibold text-decoration-none">Colis #@liv.ColisId</a>
                                     <div><span class="bt-code">@liv.Colis?.CodeSuivi</span></div>
                                     <span class="bt-badge @liv.Statut.Badge() d-md-none mt-1">@liv.Statut.Libelle()</span>
                                 </td>
@@ -72,7 +72,7 @@
                                             <div class="text-muted">Non affecté</div>
                                         }
                                         <div class="text-muted small text-nowrap">
-                                            @string.Join(" · ", new[] { liv.Livreur?.Immatriculation, liv.MoyenTransport?.Type }.Where(t => !string.IsNullOrEmpty(t)))
+                                            @string.Join(" · ", new[] { liv.MoyenTransport?.Type, liv.MoyenTransport?.Immatriculation }.Where(t => !string.IsNullOrEmpty(t)))
                                         </div>
                                     }
                                     else if (liv.MoyenTransport != null)
