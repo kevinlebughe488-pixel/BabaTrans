@@ -15,19 +15,21 @@ namespace BabaTrans.Controllers
         private readonly BabaTransContext _context;
         private readonly TarificationService _tarificationService;
         private readonly CompteClientService _compteClient;
+        private readonly GeolocalisationService _geolocalisation;
 
-        public CommandeController(BabaTransContext context, TarificationService tarificationService, CompteClientService compteClient)
+        public CommandeController(BabaTransContext context, TarificationService tarificationService, CompteClientService compteClient,
+            GeolocalisationService geolocalisation)
         {
             _context = context;
             _tarificationService = tarificationService;
             _compteClient = compteClient;
+            _geolocalisation = geolocalisation;
         }
 
         public async Task<IActionResult> Index()
         {
             var query = _context.Commandes
                 .Include(c => c.Client)
-                .Include(c => c.Trajet)
                 .Include(c => c.Colis)
                 .AsQueryable();
 
@@ -55,7 +57,6 @@ namespace BabaTrans.Controllers
             if (id == null) return NotFound();
             var commande = await _context.Commandes
                 .Include(c => c.Client)
-                .Include(c => c.Trajet).ThenInclude(t => t!.MoyenTransport)
                 .Include(c => c.Colis)
                 .FirstOrDefaultAsync(c => c.Id == id);
             if (commande == null) return NotFound();
@@ -94,26 +95,25 @@ namespace BabaTrans.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("VilleDestination,Description,PoidsEstimeKg,AdresseDestination,QuartierDestination,ContactDestination,TelephoneDestination,ClientId,TrajetId")] Commande commande)
+        public async Task<IActionResult> Create([Bind("VilleDestination,Description,PoidsEstimeKg,AdresseDestination,QuartierDestination,ContactDestination,TelephoneDestination,ClientId,LatitudeDestination,LongitudeDestination")] Commande commande)
         {
+            Client? client;
             if (User.IsInRole("Client"))
             {
-                var client = await _compteClient.GetClientConnecteAsync(User);
+                client = await _compteClient.GetClientConnecteAsync(User);
                 if (client == null || !client.EstActif)
                 {
                     TempData["Error"] = "Aucun supermarché actif n'est associé à ce compte. Contactez BABA-Trans.";
                     return RedirectToAction(nameof(Index));
                 }
 
-                // Un client ne choisit ni le supermarché ni le trajet : c'est le rôle de l'agent.
+                // Un client ne choisit pas le supermarché : la commande est toujours la sienne.
                 commande.ClientId = client.Id;
-                commande.TrajetId = null;
                 ModelState.Remove(nameof(commande.ClientId));
-                ModelState.Remove(nameof(commande.TrajetId));
             }
             else
             {
-                await ValiderClientAsync(commande.ClientId, clientActuelId: null);
+                client = await ValiderClientAsync(commande.ClientId, clientActuelId: null);
             }
 
             NettoyerChamps(commande);
@@ -121,7 +121,8 @@ namespace BabaTrans.Controllers
             if (!commande.PoidsEstimeKg.HasValue || commande.PoidsEstimeKg <= 0)
                 ModelState.AddModelError(nameof(commande.PoidsEstimeKg), "Le poids estimé est obligatoire pour calculer le tarif.");
 
-            await ValiderTrajetAsync(commande);
+            if (ModelState.IsValid)
+                await DefinirItineraireAsync(commande, client);
 
             if (ModelState.IsValid)
             {
@@ -133,8 +134,43 @@ namespace BabaTrans.Controllers
                 return RedirectToAction(nameof(Details), new { id = commande.Id });
             }
 
-            await PreparerFormulaireCommandeAsync(commande.ClientId, commande.TrajetId);
+            await PreparerFormulaireCommandeAsync(commande.ClientId);
             return View(commande);
+        }
+
+        // GET: Commande/EstimerTarif?latitude=..&longitude=..&poids=..&clientId=..
+        // Aperçu pendant la saisie. Le montant définitif est recalculé par le serveur à l'enregistrement.
+        public async Task<IActionResult> EstimerTarif(double latitude, double longitude, decimal? poids, int? clientId)
+        {
+            if (!ModelState.IsValid || !GeolocalisationService.EstDansZoneCouverte(latitude, longitude))
+                return BadRequest(new { message = "Le point de livraison doit se trouver en RDC." });
+
+            // Un client ne peut estimer qu'au départ de son propre supermarché.
+            var client = User.IsInRole("Client")
+                ? await _compteClient.GetClientConnecteAsync(User)
+                : clientId.HasValue ? await _context.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId) : null;
+
+            var depart = _geolocalisation.PointDeDepart(client);
+            var itineraire = await _geolocalisation.CalculerItineraireAsync(depart.Point, new PointGps(latitude, longitude), HttpContext.RequestAborted);
+            var estimation = poids is > 0 and <= 10000
+                ? _tarificationService.Calculer(poids.Value, poidsReel: false, itineraire.DistanceKm)
+                : null;
+
+            return Json(new
+            {
+                depart = new { latitude = depart.Point.Latitude, longitude = depart.Point.Longitude, libelle = depart.Libelle },
+                distanceKm = itineraire.DistanceKm,
+                dureeMinutes = itineraire.DureeMinutes,
+                routier = itineraire.Routier,
+                trace = itineraire.Trace,
+                tarif = estimation == null ? null : new
+                {
+                    forfait = estimation.ForfaitBase,
+                    poids = estimation.TarifPoids,
+                    distance = estimation.TarifDistance,
+                    total = estimation.Total
+                }
+            });
         }
 
         [Authorize(Roles = "Administrateur,Agent")]
@@ -150,14 +186,14 @@ namespace BabaTrans.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            await PreparerFormulaireCommandeAsync(commande.ClientId, commande.TrajetId);
+            await PreparerFormulaireCommandeAsync(commande.ClientId);
             return View(commande);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrateur,Agent")]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,VilleDestination,Description,PoidsEstimeKg,AdresseDestination,QuartierDestination,ContactDestination,TelephoneDestination,ClientId,TrajetId")] Commande commande)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,VilleDestination,Description,PoidsEstimeKg,AdresseDestination,QuartierDestination,ContactDestination,TelephoneDestination,ClientId,LatitudeDestination,LongitudeDestination")] Commande commande)
         {
             if (id != commande.Id) return NotFound();
 
@@ -173,9 +209,25 @@ namespace BabaTrans.Controllers
             if (commande.ClientId != commandeExistante.ClientId && commandeExistante.Statut != StatutCommande.EnAttente)
                 ModelState.AddModelError(nameof(commande.ClientId), "Le supermarché ne peut plus être changé une fois l'acheminement commencé.");
 
-            await ValiderClientAsync(commande.ClientId, clientActuelId: commandeExistante.ClientId);
+            var client = await ValiderClientAsync(commande.ClientId, clientActuelId: commandeExistante.ClientId);
             NettoyerChamps(commande);
-            await ValiderTrajetAsync(commande);
+
+            // La distance n'est recalculée que si le point de livraison ou le supermarché (point de départ) change.
+            var itineraireAJour = commandeExistante.DistanceKm.HasValue
+                && commande.ClientId == commandeExistante.ClientId
+                && commande.LatitudeDestination == commandeExistante.LatitudeDestination
+                && commande.LongitudeDestination == commandeExistante.LongitudeDestination;
+            if (itineraireAJour)
+            {
+                commande.LatitudeDepart = commandeExistante.LatitudeDepart;
+                commande.LongitudeDepart = commandeExistante.LongitudeDepart;
+                commande.DistanceKm = commandeExistante.DistanceKm;
+                commande.DureeEstimeeMinutes = commandeExistante.DureeEstimeeMinutes;
+            }
+            else if (ModelState.IsValid)
+            {
+                await DefinirItineraireAsync(commande, client);
+            }
 
             if (ModelState.IsValid)
             {
@@ -187,7 +239,12 @@ namespace BabaTrans.Controllers
                 commandeExistante.ContactDestination = commande.ContactDestination;
                 commandeExistante.TelephoneDestination = commande.TelephoneDestination;
                 commandeExistante.ClientId = commande.ClientId;
-                commandeExistante.TrajetId = commande.TrajetId;
+                commandeExistante.LatitudeDestination = commande.LatitudeDestination;
+                commandeExistante.LongitudeDestination = commande.LongitudeDestination;
+                commandeExistante.LatitudeDepart = commande.LatitudeDepart;
+                commandeExistante.LongitudeDepart = commande.LongitudeDepart;
+                commandeExistante.DistanceKm = commande.DistanceKm;
+                commandeExistante.DureeEstimeeMinutes = commande.DureeEstimeeMinutes;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Commande modifiée avec succès.";
                 return RedirectToAction(nameof(Details), new { id });
@@ -196,7 +253,7 @@ namespace BabaTrans.Controllers
             // Le statut n'est pas modifiable dans le formulaire : on réaffiche celui de la base.
             commande.Statut = commandeExistante.Statut;
             commande.DateCommande = commandeExistante.DateCommande;
-            await PreparerFormulaireCommandeAsync(commande.ClientId, commande.TrajetId);
+            await PreparerFormulaireCommandeAsync(commande.ClientId);
             return View(commande);
         }
 
@@ -244,28 +301,48 @@ namespace BabaTrans.Controllers
             return !livraisonActive;
         }
 
-        private async Task ValiderClientAsync(int clientId, int? clientActuelId)
+        private async Task<Client?> ValiderClientAsync(int clientId, int? clientActuelId)
         {
             var client = await _context.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId);
             if (client == null)
                 ModelState.AddModelError(nameof(Commande.ClientId), "Sélectionnez un supermarché valide.");
             else if (!client.EstActif && client.Id != clientActuelId)
                 ModelState.AddModelError(nameof(Commande.ClientId), "Ce supermarché est désactivé.");
+            return client;
         }
 
-        /// <summary>Le trajet affecté doit arriver dans la ville de destination de la commande.</summary>
-        private async Task ValiderTrajetAsync(Commande commande)
+        /// <summary>
+        /// Calcule côté serveur le point de départ, la distance et la durée : le navigateur n'envoie que le point de livraison.
+        /// Sans point sur la carte (JavaScript désactivé, carte non chargée), le centre d'une ville connue est utilisé.
+        /// </summary>
+        private async Task DefinirItineraireAsync(Commande commande, Client? client)
         {
-            if (!commande.TrajetId.HasValue)
-                return;
+            if (commande.LatitudeDestination is null || commande.LongitudeDestination is null)
+            {
+                var centreVille = _geolocalisation.CoordonneesVille(commande.VilleDestination);
+                if (centreVille is null)
+                {
+                    ModelState.AddModelError(nameof(Commande.LatitudeDestination),
+                        "Placez le point de livraison sur la carte pour calculer la distance.");
+                    return;
+                }
+                commande.LatitudeDestination = centreVille.Value.Latitude;
+                commande.LongitudeDestination = centreVille.Value.Longitude;
+            }
 
-            var trajet = await _context.Trajets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == commande.TrajetId);
-            if (trajet == null)
-                ModelState.AddModelError(nameof(Commande.TrajetId), "Le trajet sélectionné n'existe pas.");
-            else if (!string.IsNullOrWhiteSpace(commande.VilleDestination)
-                     && !StatutHelper.MemeVille(trajet.VilleArrivee, commande.VilleDestination))
-                ModelState.AddModelError(nameof(Commande.TrajetId),
-                    $"Ce trajet arrive à {trajet.VilleArrivee}, alors que la commande est destinée à {commande.VilleDestination}.");
+            var destination = new PointGps(commande.LatitudeDestination.Value, commande.LongitudeDestination.Value);
+            if (!GeolocalisationService.EstDansZoneCouverte(destination.Latitude, destination.Longitude))
+            {
+                ModelState.AddModelError(nameof(Commande.LatitudeDestination), "Le point de livraison doit se trouver en RDC.");
+                return;
+            }
+
+            var depart = _geolocalisation.PointDeDepart(client);
+            var itineraire = await _geolocalisation.CalculerItineraireAsync(depart.Point, destination, HttpContext.RequestAborted);
+            commande.LatitudeDepart = depart.Point.Latitude;
+            commande.LongitudeDepart = depart.Point.Longitude;
+            commande.DistanceKm = itineraire.DistanceKm;
+            commande.DureeEstimeeMinutes = itineraire.DureeMinutes;
         }
 
         private void NettoyerChamps(Commande commande)
@@ -288,36 +365,37 @@ namespace BabaTrans.Controllers
             if (ville.Length == 0)
                 return ville;
 
-            var villeConnue = _tarificationService.LireParametres().SupplementsDestination.Keys
+            var villeConnue = _geolocalisation.Villes.Keys
                 .FirstOrDefault(v => StatutHelper.MemeVille(v, ville));
             return villeConnue ?? char.ToUpperInvariant(ville[0]) + ville[1..];
         }
 
-        private async Task PreparerFormulaireCommandeAsync(int? clientId = null, int? trajetId = null)
+        private async Task PreparerFormulaireCommandeAsync(int? clientId = null)
         {
             var estClient = User.IsInRole("Client");
             ViewBag.EstClient = estClient;
-            ViewBag.ParametresTarification = _tarificationService.LireParametres();
 
+            Client? client;
             if (estClient)
             {
-                ViewBag.ClientConnecte = await _compteClient.GetClientConnecteAsync(User);
-                return;
+                client = await _compteClient.GetClientConnecteAsync(User);
+                ViewBag.ClientConnecte = client;
             }
-
-            // Le client actuel reste dans la liste même s'il a été désactivé depuis.
-            ViewBag.Clients = new SelectList(
-                await _context.Clients
+            else
+            {
+                // Le client actuel reste dans la liste même s'il a été désactivé depuis.
+                var clients = await _context.Clients
+                    .AsNoTracking()
                     .Where(c => c.EstActif || c.Id == clientId)
                     .OrderBy(c => c.NomSupermarche)
-                    .ToListAsync(),
-                "Id", "NomSupermarche", clientId);
+                    .ToListAsync();
+                ViewBag.Clients = new SelectList(clients, "Id", "NomSupermarche", clientId);
+                client = clients.FirstOrDefault(c => c.Id == clientId);
+            }
 
-            var trajets = await _context.Trajets
-                .OrderBy(t => t.VilleDepart).ThenBy(t => t.VilleArrivee)
-                .Select(t => new { t.Id, Display = t.VilleDepart + " → " + t.VilleArrivee })
-                .ToListAsync();
-            ViewBag.Trajets = new SelectList(trajets, "Id", "Display", trajetId);
+            // La carte s'ouvre sur le supermarché expéditeur (ou le dépôt) tant qu'aucun point n'est choisi.
+            var depart = _geolocalisation.PointDeDepart(client);
+            ViewBag.CentreCarte = CarteHelper.Coordonnees(depart.Point.Latitude, depart.Point.Longitude);
         }
     }
 }

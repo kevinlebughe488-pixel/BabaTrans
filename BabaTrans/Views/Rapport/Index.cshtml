@@ -80,8 +80,12 @@
             </div>
             <div class="bt-card-body">
                 <div class="bt-stat-row">
-                    <span><i class="bi bi-geo-alt text-primary me-2"></i>Trajets inter-villes</span>
-                    <span class="bt-stat-number">@Model.TotalTrajets</span>
+                    <span><i class="bi bi-signpost-split text-primary me-2"></i>Kilomètres de livraison commandés</span>
+                    <span class="bt-stat-number">@Model.DistanceTotaleKm.ToString("N0") km</span>
+                </div>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-broadcast-pin text-primary me-2"></i>Livraisons suivies par GPS</span>
+                    <span class="bt-stat-number">@Model.LivraisonsSuiviesGps / @Model.TotalLivraisons</span>
                 </div>
                 <div class="bt-stat-row">
                     <span><i class="bi bi-truck-front text-success me-2"></i>Véhicules disponibles</span>

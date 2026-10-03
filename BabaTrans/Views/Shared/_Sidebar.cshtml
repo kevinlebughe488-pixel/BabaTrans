@@ -54,9 +54,9 @@
 
             <div class="nav-section">
                 <div class="nav-section-title">Réseau & Flotte</div>
-                <a class="nav-link @Actif(currentController == "Transport" && currentAction.Contains("Trajet"))" asp-controller="Transport" asp-action="Trajets">
-                    <i class="bi bi-geo-alt-fill"></i>
-                    <span>Trajets inter-villes</span>
+                <a class="nav-link @Actif(currentController == "SuiviGps")" asp-controller="SuiviGps" asp-action="Carte">
+                    <i class="bi bi-broadcast-pin"></i>
+                    <span>Suivi GPS en direct</span>
                 </a>
                 <a class="nav-link @Actif(currentController == "Transport" && currentAction.Contains("Moyen"))" asp-controller="Transport" asp-action="Moyens">
                     <i class="bi bi-truck-front-fill"></i>

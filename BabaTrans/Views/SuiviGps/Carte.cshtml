@@ -1,0 +1,49 @@
+@inject IConfiguration Configuration
+@{
+    ViewData["Title"] = "Suivi GPS en direct";
+}
+
+<div data-bt-carte="flotte"
+     data-url-flotte="@Url.Action("Flotte", "SuiviGps")"
+     data-intervalle="@Configuration.GetValue("Geolocalisation:IntervalleSuiviSecondes", 5)">
+    <div class="bt-page-header">
+        <div>
+            <h4 class="fw-bold text-heading"><i class="bi bi-broadcast-pin text-primary me-2"></i>Livreurs en route</h4>
+            <div class="text-muted small">
+                <span data-champ="nombre-en-cours">0</span> livraison(s) en cours ·
+                <span data-champ="nombre-actifs">0</span> GPS actif(s) ·
+                <span data-champ="maj">Chargement...</span>
+            </div>
+        </div>
+        <a asp-controller="Livraison" asp-action="Index" class="bt-btn bt-btn-outline">
+            <i class="bi bi-send-check"></i> Livraisons & affectations
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="bt-card p-2">
+                <div class="bt-map bt-map-flotte" data-role="carte" role="region" aria-label="Carte des livreurs en route"></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="bt-card">
+                <div class="bt-card-header">
+                    <h5>Livraisons en cours</h5>
+                </div>
+                <div class="bt-flotte-liste" data-role="liste">
+                    <div class="text-muted small p-3 text-center">Chargement...</div>
+                </div>
+            </div>
+            <div class="text-muted small mt-3">
+                <i class="bi bi-info-circle me-1"></i>
+                Un livreur est « en direct » lorsque son téléphone a envoyé une position depuis moins de
+                @(BabaTrans.Controllers.SuiviGpsController.SecondesAvantSignalPerdu / 60) minutes.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_CarteScripts" />
+}

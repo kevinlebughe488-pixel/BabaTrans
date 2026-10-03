@@ -17,9 +17,14 @@
     </div>
     @if (estPersonnel)
     {
-        <a asp-action="Create" class="bt-btn bt-btn-primary">
-            <i class="bi bi-plus-lg"></i> Affecter une livraison
-        </a>
+        <div class="bt-page-actions">
+            <a asp-controller="SuiviGps" asp-action="Carte" class="bt-btn bt-btn-outline">
+                <i class="bi bi-broadcast-pin"></i> Carte en direct
+            </a>
+            <a asp-action="Create" class="bt-btn bt-btn-primary">
+                <i class="bi bi-plus-lg"></i> Affecter une livraison
+            </a>
+        </div>
     }
 </div>
 

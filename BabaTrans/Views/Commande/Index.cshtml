@@ -36,7 +36,7 @@
                             <th>Supermarché</th>
                         }
                         <th>Destination</th>
-                        <th>Trajet</th>
+                        <th>Distance</th>
                         <th>Colis</th>
                         <th>Tarif</th>
                         <th>Date</th>
@@ -62,14 +62,15 @@
                                 <td>
                                     <span class="text-heading"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@cmd.VilleDestination</span>
                                 </td>
-                                <td>
-                                    @if (cmd.Trajet != null)
+                                <td class="text-nowrap">
+                                    @if (cmd.DistanceKm.HasValue)
                                     {
-                                        <span class="small text-muted">@cmd.Trajet.VilleDepart → @cmd.Trajet.VilleArrivee</span>
+                                        <span class="text-heading">@cmd.DistanceKm.Value.ToString("N1") km</span>
+                                        <div class="text-muted small">≈ @CarteHelper.Duree(cmd.DureeEstimeeMinutes)</div>
                                     }
                                     else
                                     {
-                                        <span class="text-muted small">Non affecté</span>
+                                        <span class="text-muted small">Non localisée</span>
                                     }
                                 </td>
                                 <td>

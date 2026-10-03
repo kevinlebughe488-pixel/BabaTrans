@@ -118,7 +118,10 @@ namespace BabaTrans.ViewModels
 
         public int TotalMoyensTransport { get; set; }
         public int MoyensDisponibles { get; set; }
-        public int TotalTrajets { get; set; }
+
+        /// <summary>Kilomètres de livraison commandés (commandes non annulées).</summary>
+        public decimal DistanceTotaleKm { get; set; }
+        public int LivraisonsSuiviesGps { get; set; }
 
         /// <summary>Part des livraisons terminées (réussies ou échouées) qui ont réussi.</summary>
         public int TauxReussite => LivraisonsConfirmees + LivraisonsEchouees == 0

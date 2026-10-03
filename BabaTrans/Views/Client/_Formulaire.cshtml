@@ -31,3 +31,31 @@
     <textarea asp-for="Adresse" class="bt-form-control" rows="3" placeholder="Adresse, commune, ville (ex : Boulevard du 30 Juin, Gombe, Kinshasa)"></textarea>
     <span asp-validation-for="Adresse" class="text-danger small"></span>
 </div>
+
+<div class="col-md-12" data-bt-carte="point" data-centre="@ViewBag.CentreCarte">
+    <label class="bt-form-label" for="rechercheEmplacement">Emplacement du supermarché (point d'enlèvement)</label>
+    <div class="bt-map-toolbar">
+        <div class="input-group">
+            <input type="search" id="rechercheEmplacement" class="bt-form-control" data-role="recherche" autocomplete="off"
+                   placeholder="Rechercher l'adresse du supermarché..." />
+            <button type="button" class="bt-btn bt-btn-outline" data-role="rechercher" aria-label="Rechercher l'adresse">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+        <button type="button" class="bt-btn bt-btn-outline" data-role="ma-position">
+            <i class="bi bi-crosshair"></i> Ma position
+        </button>
+        <button type="button" class="bt-btn bt-btn-outline" data-role="effacer">
+            <i class="bi bi-x-lg"></i> Effacer
+        </button>
+    </div>
+    <div class="bt-map-resultats" data-role="resultats" hidden></div>
+    <div class="bt-map" data-role="carte" role="region" aria-label="Carte de l'emplacement du supermarché"></div>
+    <input type="hidden" id="Latitude" name="Latitude" value="@CarteHelper.Invariant(Model?.Latitude)" data-role="latitude" />
+    <input type="hidden" id="Longitude" name="Longitude" value="@CarteHelper.Invariant(Model?.Longitude)" data-role="longitude" />
+    <div class="small text-warning mt-1" data-role="message" hidden></div>
+    <span asp-validation-for="Latitude" class="text-danger small"></span>
+    <div class="bt-form-hint">
+        Point de départ des livraisons pour calculer la distance et le tarif. Sans emplacement, le dépôt BABA-Trans est utilisé.
+    </div>
+</div>

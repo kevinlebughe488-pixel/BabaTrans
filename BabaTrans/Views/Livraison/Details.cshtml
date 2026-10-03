@@ -113,6 +113,9 @@
     </div>
 </div>
 
+<!-- Suivi GPS du livreur en temps réel -->
+<partial name="_SuiviGps" model="Model" />
+
 <div class="row g-4">
     <!-- Colis, timbre et adresse de livraison -->
     <div class="col-md-6">
@@ -303,4 +306,8 @@
             </div>
         </div>
     </div>
+}
+
+@section Scripts {
+    <partial name="_CarteScripts" />
 }

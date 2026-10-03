@@ -7,11 +7,11 @@
 <div class="bt-page-header">
     <div>
         <h4 class="fw-bold text-heading"><i class="bi bi-truck-front-fill text-primary me-2"></i>Flotte & véhicules</h4>
-        <div class="text-muted small">Camions, camionnettes et motos du réseau inter-villes et urbain</div>
+        <div class="text-muted small">Camions, camionnettes et motos de la flotte BABA-Trans</div>
     </div>
     <div class="bt-page-actions">
-        <a asp-action="Trajets" class="bt-btn bt-btn-outline">
-            <i class="bi bi-geo-alt"></i> Voir les trajets
+        <a asp-controller="SuiviGps" asp-action="Carte" class="bt-btn bt-btn-outline">
+            <i class="bi bi-broadcast-pin"></i> Suivi GPS en direct
         </a>
         <a asp-action="CreateMoyen" class="bt-btn bt-btn-primary">
             <i class="bi bi-plus-lg"></i> Nouveau véhicule
@@ -63,12 +63,6 @@
                         <div class="text-muted small">
                             @(m.Description ?? "Véhicule de la flotte BABA-Trans.")
                         </div>
-                        @if (m.Trajets.Any())
-                        {
-                            <div class="text-muted small mt-2">
-                                <i class="bi bi-signpost-split me-1"></i>Véhicule habituel de @m.Trajets.Count trajet@(m.Trajets.Count > 1 ? "s" : "")
-                            </div>
-                        }
                     </div>
                     <div class="p-3 border-top text-end">
                         <a asp-action="EditMoyen" asp-route-id="@m.Id" class="bt-btn bt-btn-outline bt-btn-sm">

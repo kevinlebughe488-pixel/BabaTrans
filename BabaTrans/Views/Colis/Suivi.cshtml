@@ -176,6 +176,12 @@
                         </div>
                     </div>
                 </div>
+
+                // Carte en direct : réservée au personnel, au livreur et au supermarché propriétaire.
+                if (Model.AccesComplet && derniere != null && derniere.Statut != StatutLivraison.Echouee)
+                {
+                    <partial name="_SuiviGps" model="derniere" />
+                }
             }
             else
             {
@@ -190,3 +196,7 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_CarteScripts" />
+}

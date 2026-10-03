@@ -8,6 +8,9 @@
     var estimation = Tarification.Calculer(Model);
     var aDesInfosDestination = !string.IsNullOrEmpty(Model.AdresseDestination) || !string.IsNullOrEmpty(Model.QuartierDestination)
         || !string.IsNullOrEmpty(Model.ContactDestination) || !string.IsNullOrEmpty(Model.TelephoneDestination);
+    var coordonneesDestination = CarteHelper.Coordonnees(Model.LatitudeDestination, Model.LongitudeDestination);
+    var departDuSupermarche = Model.Client?.Latitude != null
+        && Model.Client.Latitude == Model.LatitudeDepart && Model.Client.Longitude == Model.LongitudeDepart;
 }
 
 <div class="bt-page-header">
@@ -99,44 +102,47 @@
     <div class="col-md-6">
         <div class="bt-card h-100">
             <div class="bt-card-header">
-                <h5><i class="bi bi-signpost-split text-primary me-2"></i>Trajet & moyen de transport</h5>
+                <h5><i class="bi bi-signpost-split text-primary me-2"></i>Itinéraire de livraison</h5>
+                @if (Model.DistanceKm.HasValue)
+                {
+                    <span class="bt-badge bt-badge-primary">@Model.DistanceKm.Value.ToString("N1") km</span>
+                }
             </div>
             <div class="bt-card-body">
-                @if (Model.Trajet != null)
+                @if (coordonneesDestination != null)
                 {
-                    <dl class="row bt-dl">
-                        <dt class="col-sm-5">Itinéraire</dt>
-                        <dd class="col-sm-7 fw-bold">@Model.Trajet.VilleDepart → @Model.Trajet.VilleArrivee</dd>
-
-                        <dt class="col-sm-5">Distance</dt>
-                        <dd class="col-sm-7">@(Model.Trajet.DistanceKm.HasValue ? $"{Model.Trajet.DistanceKm:N0} km" : "Non spécifiée")</dd>
-
-                        <dt class="col-sm-5">Durée estimée</dt>
-                        <dd class="col-sm-7">@(Model.Trajet.DureeEstimeeHeures.HasValue ? $"{Model.Trajet.DureeEstimeeHeures} h" : "Non spécifiée")</dd>
-
-                        @if (estPersonnel)
-                        {
-                            <dt class="col-sm-5">Véhicule habituel</dt>
-                            <dd class="col-sm-7">
-                                @if (Model.Trajet.MoyenTransport != null)
-                                {
-                                    <span class="bt-badge bt-badge-neutral">
-                                        <i class="bi bi-truck"></i>@Model.Trajet.MoyenTransport.Type · @Model.Trajet.MoyenTransport.Capacite.ToString("N0") kg
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Aucun véhicule assigné</span>
-                                }
-                            </dd>
-                        }
-                    </dl>
+                    <div data-bt-carte="itineraire"
+                         data-depart="@CarteHelper.Coordonnees(Model.LatitudeDepart, Model.LongitudeDepart)"
+                         data-destination="@coordonneesDestination"
+                         data-libelle-depart="@(departDuSupermarche ? Model.Client!.NomSupermarche : "Dépôt BABA-Trans")"
+                         data-libelle-destination="@string.Join(", ", new[] { Model.AdresseDestination, Model.QuartierDestination, Model.VilleDestination }.Where(p => !string.IsNullOrWhiteSpace(p)))"
+                         data-url-itineraire="@Url.Action("ItineraireRoutier", "SuiviGps")">
+                        <div class="bt-map" data-role="carte" style="height: 220px;" role="region" aria-label="Carte de l'itinéraire"></div>
+                    </div>
+                    <div class="row g-3 mt-1 small">
+                        <div class="col-4">
+                            <div class="text-muted text-uppercase">Départ</div>
+                            <div class="text-heading">@(departDuSupermarche ? "Supermarché" : "Dépôt BABA-Trans")</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted text-uppercase">Distance</div>
+                            <div class="fw-semibold text-heading">@(Model.DistanceKm.HasValue ? $"{Model.DistanceKm.Value:N1} km" : "—")</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted text-uppercase">Durée estimée</div>
+                            <div class="fw-semibold text-heading">@CarteHelper.Duree(Model.DureeEstimeeMinutes)</div>
+                        </div>
+                    </div>
                 }
                 else
                 {
                     <div class="text-center py-4 text-muted">
-                        <i class="bi bi-signpost-split fs-2 d-block mb-2"></i>
-                        Aucun trajet affecté pour l'instant.
+                        <i class="bi bi-geo fs-2 d-block mb-2"></i>
+                        Le point de livraison n'est pas localisé sur la carte.
+                        @if (estPersonnel && Model.Statut.EstOuverte())
+                        {
+                            <div class="small mt-1">Modifiez la commande pour le placer et calculer la distance.</div>
+                        }
                     </div>
                 }
             </div>
@@ -158,8 +164,22 @@
                         <div class="fs-5 fw-bold text-heading">@estimation.PoidsTotalKg.ToString("N2") kg</div>
                     </div>
                     <div class="col-6">
-                        <div class="text-muted small text-uppercase">Forfait + destination</div>
-                        <div class="text-heading">@((estimation.ForfaitBase + estimation.SupplementDestination).ToString("N0")) FC</div>
+                        <div class="text-muted small text-uppercase">Distance</div>
+                        <div class="fs-5 fw-bold text-heading">@(estimation.DistanceKm.HasValue ? $"{estimation.DistanceKm.Value:N1} km" : "—")</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="bt-stat-row">
+                            <span class="text-muted">Forfait</span>
+                            <span>@estimation.ForfaitBase.ToString("N0") FC</span>
+                        </div>
+                        <div class="bt-stat-row">
+                            <span class="text-muted">Poids</span>
+                            <span>@estimation.TarifPoids.ToString("N0") FC</span>
+                        </div>
+                        <div class="bt-stat-row">
+                            <span class="text-muted">Distance</span>
+                            <span>@estimation.TarifDistance.ToString("N0") FC</span>
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="bt-panel d-flex justify-content-between align-items-center">
@@ -170,8 +190,12 @@
                 </div>
                 <div class="text-muted small mt-3">
                     @(estimation.PoidsReel
-                        ? "Calculé sur le poids total des colis enregistrés."
+                        ? "Calculé sur le poids total des colis enregistrés et la distance de livraison."
                         : "Estimation sur le poids déclaré : elle sera recalculée dès l'enregistrement des colis.")
+                    @if (!estimation.DistanceKm.HasValue)
+                    {
+                        <div class="text-warning">Distance inconnue : le point de livraison doit être placé sur la carte.</div>
+                    }
                 </div>
             </div>
         </div>
@@ -257,3 +281,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_CarteScripts" />
+}

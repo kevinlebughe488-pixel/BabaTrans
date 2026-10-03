@@ -1,16 +1,30 @@
 @model BabaTrans.Models.Commande
-@* Champs de destination communs aux formulaires de création et de modification *@
+@inject BabaTrans.Services.GeolocalisationService Geolocalisation
+@* Champs de destination communs aux formulaires de création et de modification.
+   Ville, adresse et quartier sont pré-remplis à partir du point choisi sur la carte. *@
 
 <div class="col-md-6">
-    <label asp-for="AdresseDestination" class="bt-form-label"></label>
-    <input asp-for="AdresseDestination" class="bt-form-control" placeholder="Ex : Boulevard du Port n°8" />
-    <span asp-validation-for="AdresseDestination" class="text-danger small"></span>
+    <label asp-for="VilleDestination" class="bt-form-label"></label>
+    <input asp-for="VilleDestination" class="bt-form-control" list="villesConnues" placeholder="Ex : Lubumbashi, Goma, Matadi" autocomplete="off" />
+    <datalist id="villesConnues">
+        @foreach (var ville in Geolocalisation.Villes.Keys)
+        {
+            <option value="@ville"></option>
+        }
+    </datalist>
+    <span asp-validation-for="VilleDestination" class="text-danger small"></span>
 </div>
 
 <div class="col-md-6">
     <label asp-for="QuartierDestination" class="bt-form-label"></label>
     <input asp-for="QuartierDestination" class="bt-form-control" placeholder="Ex : Ville Basse" />
     <span asp-validation-for="QuartierDestination" class="text-danger small"></span>
+</div>
+
+<div class="col-md-12">
+    <label asp-for="AdresseDestination" class="bt-form-label"></label>
+    <input asp-for="AdresseDestination" class="bt-form-control" placeholder="Ex : Boulevard du Port n°8" />
+    <span asp-validation-for="AdresseDestination" class="text-danger small"></span>
 </div>
 
 <div class="col-md-6">

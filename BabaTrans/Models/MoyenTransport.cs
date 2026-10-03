@@ -29,8 +29,5 @@ namespace BabaTrans.Models
         [Display(Name = "Description")]
         [StringLength(300)]
         public string? Description { get; set; }
-
-        // Navigation
-        public virtual ICollection<Trajet> Trajets { get; set; } = new List<Trajet>();
     }
 }

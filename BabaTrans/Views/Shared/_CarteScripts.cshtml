@@ -1,0 +1,18 @@
+@using System.Text.Json
+@inject IConfiguration Configuration
+@inject BabaTrans.Services.GeolocalisationService Geolocalisation
+@* Scripts des cartes : bibliothèque Leaflet, réglages lus dans appsettings.json, puis carte.js qui initialise les blocs data-bt-carte. *@
+@{
+    var reglages = new
+    {
+        tuiles = Configuration["Geolocalisation:TuilesCarte"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attribution = "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>",
+        geocodage = (Configuration["Geolocalisation:ServiceGeocodage"] ?? "https://nominatim.openstreetmap.org").TrimEnd('/'),
+        centre = new[] { Geolocalisation.Depot.Point.Latitude, Geolocalisation.Depot.Point.Longitude },
+        zoom = 11,
+        intervalleSuivi = Configuration.GetValue("Geolocalisation:IntervalleSuiviSecondes", 5)
+    };
+}
+<script src="~/lib/leaflet/dist/leaflet.js"></script>
+<script>window.BabaTransCarte = @Html.Raw(JsonSerializer.Serialize(reglages));</script>
+<script src="~/js/carte.js" asp-append-version="true"></script>

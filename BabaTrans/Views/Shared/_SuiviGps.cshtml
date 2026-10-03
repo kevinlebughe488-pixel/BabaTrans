@@ -1,0 +1,87 @@
+@model BabaTrans.Models.Livraison
+@inject IConfiguration Configuration
+@* Carte de suivi GPS en temps réel d'une livraison.
+   Le livreur affecté y trouve aussi le partage de sa position et le lien de navigation vers la destination. *@
+@{
+    var commande = Model.Colis?.Commande;
+    var enAttente = Model.Statut == StatutLivraison.EnAttente;
+    var enCours = Model.Statut == StatutLivraison.EnCours;
+    var estLivreurAffecte = User.IsInRole("Livreur") && Model.LivreurId != null && Model.LivreurId == UserManager.GetUserId(User);
+    var lienNavigation = CarteHelper.LienNavigation(commande?.LatitudeDestination, commande?.LongitudeDestination);
+    var intervalle = Configuration.GetValue("Geolocalisation:IntervalleSuiviSecondes", 5);
+}
+
+<div class="bt-card mb-4" data-bt-carte="suivi"
+     data-url-suivi="@Url.Action("Position", "SuiviGps", new { id = Model.Id })"
+     data-intervalle="@intervalle">
+    <div class="bt-card-header">
+        <h5><i class="bi bi-broadcast-pin text-primary me-2"></i>Suivi GPS en temps réel</h5>
+        <span class="bt-gps-etat small" data-role="etat" data-etat="attente" aria-live="polite">Chargement...</span>
+    </div>
+    <div class="bt-card-body">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="bt-map-cadre">
+                    <div class="bt-map bt-map-lg" data-role="carte" role="region" aria-label="Carte de suivi du livreur"></div>
+                    <button type="button" class="bt-btn bt-btn-primary bt-btn-sm bt-map-recentrer" data-role="recentrer" hidden>
+                        <i class="bi bi-crosshair"></i> Suivre le livreur
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <dl class="bt-dl small mb-2">
+                    <dt>Dernière position</dt>
+                    <dd data-champ="maj">—</dd>
+
+                    <dt>Vitesse</dt>
+                    <dd data-champ="vitesse">—</dd>
+
+                    <dt>Précision GPS</dt>
+                    <dd data-champ="precision">—</dd>
+
+                    <dt>Distance restante</dt>
+                    <dd data-champ="distance-restante">—</dd>
+
+                    <dt>Arrivée estimée</dt>
+                    <dd data-champ="arrivee">—</dd>
+                </dl>
+                <div class="text-muted small">
+                    <i class="bi bi-arrow-repeat me-1"></i>Mise à jour automatique toutes les @intervalle secondes.
+                </div>
+
+                @if (estLivreurAffecte && enCours)
+                {
+                    <div class="bt-panel mt-3" data-bt-carte="partage" data-livraison="@Model.Id"
+                         data-url-envoi="@Url.Action("EnvoyerPosition", "SuiviGps", new { id = Model.Id })">
+                        @Html.AntiForgeryToken()
+                        <div class="fw-semibold text-heading mb-1"><i class="bi bi-phone me-1"></i>Partager ma position</div>
+                        <p class="text-muted small mb-2">
+                            Le supermarché et BABA-Trans suivent votre trajet en direct.
+                            Gardez cette page ouverte et l'écran allumé pendant la livraison.
+                        </p>
+                        <button type="button" class="bt-btn bt-btn-accent bt-btn-sm w-100 justify-content-center" data-role="demarrer">
+                            <i class="bi bi-broadcast"></i> Activer le partage GPS
+                        </button>
+                        <button type="button" class="bt-btn bt-btn-outline bt-btn-sm w-100 justify-content-center" data-role="arreter" hidden>
+                            <i class="bi bi-stop-circle"></i> Arrêter le partage
+                        </button>
+                        <div class="small mt-2" data-role="message" aria-live="polite"></div>
+                    </div>
+                }
+                else if (estLivreurAffecte && enAttente)
+                {
+                    <div class="bt-panel mt-3 small text-muted">
+                        <i class="bi bi-info-circle me-1"></i>Le partage de votre position sera proposé après le scan de départ.
+                    </div>
+                }
+
+                @if (estLivreurAffecte && (enAttente || enCours) && lienNavigation != null)
+                {
+                    <a href="@lienNavigation" target="_blank" rel="noopener" class="bt-btn bt-btn-outline bt-btn-sm w-100 justify-content-center mt-2">
+                        <i class="bi bi-sign-turn-right"></i> Itinéraire vers la destination
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
