@@ -10,6 +10,7 @@
 
 <div class="col-12" data-bt-carte="commande"
      data-url-estimation="@Url.Action("EstimerTarif", "Commande")"
+     data-commande-id="@(Model is { Id: > 0 } commandeExistante ? commandeExistante.Id : null)"
      data-villes="@JsonSerializer.Serialize(villes)"
      data-centre="@ViewBag.CentreCarte">
     <label class="bt-form-label" for="rechercheAdresse">Point de livraison</label>
@@ -38,40 +39,46 @@
 
     <div class="bt-panel mt-3" data-role="estimation" aria-live="polite">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-            <div>
+            <div class="bt-estimation-texte">
                 <div class="fw-semibold text-heading d-flex align-items-center gap-2">
                     <i class="bi bi-calculator-fill text-primary"></i> Montant estimé de la livraison
                 </div>
                 <div class="text-muted small mt-1">
                     @tarifs.ForfaitBase.ToString("N0") FC + @tarifs.TarifParKg.ToString("N0") FC par kg + @tarifs.TarifParKm.ToString("N0") FC par km
-                    (minimum @tarifs.MinimumFacturable.ToString("N0") FC). Ajusté après pesée des colis.
+                    (minimum @tarifs.MinimumFacturable.ToString("N0") FC, arrondi au millier supérieur). Ajusté après pesée des colis.
                 </div>
             </div>
-            <div class="text-md-end">
+            <div class="text-md-end ms-md-auto">
                 <div class="text-primary fw-bold fs-5" data-champ="total">—</div>
                 <div class="text-muted small" data-champ="detail">Placez le point de livraison sur la carte.</div>
             </div>
         </div>
         <div class="row g-2 mt-2 small">
-            <div class="col-6 col-md-3">
+            <div class="col-6">
                 <div class="text-muted text-uppercase">Distance</div>
                 <div class="fw-semibold text-heading" data-champ="distance">—</div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col-6">
                 <div class="text-muted text-uppercase">Durée estimée</div>
                 <div class="fw-semibold text-heading" data-champ="duree">—</div>
             </div>
-            <div class="col-4 col-md-2">
+        </div>
+        <div class="row g-2 mt-1 small" aria-label="Détail du montant">
+            <div class="col-6 col-md-3">
                 <div class="text-muted text-uppercase">Forfait</div>
                 <div data-champ="forfait">—</div>
             </div>
-            <div class="col-4 col-md-2">
-                <div class="text-muted text-uppercase">Poids</div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase">Frais poids</div>
                 <div data-champ="tarif-poids">—</div>
             </div>
-            <div class="col-4 col-md-2">
-                <div class="text-muted text-uppercase">Km</div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase">Frais km</div>
                 <div data-champ="tarif-distance">—</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase" data-champ="libelle-ajustement">Arrondi</div>
+                <div data-champ="ajustement">—</div>
             </div>
         </div>
         <div class="text-muted small mt-2" data-champ="methode"></div>

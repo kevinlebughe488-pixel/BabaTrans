@@ -138,9 +138,9 @@ namespace BabaTrans.Controllers
             return View(commande);
         }
 
-        // GET: Commande/EstimerTarif?latitude=..&longitude=..&poids=..&clientId=..
+        // GET: Commande/EstimerTarif?latitude=..&longitude=..&poids=..&clientId=..&commandeId=..
         // Aperçu pendant la saisie. Le montant définitif est recalculé par le serveur à l'enregistrement.
-        public async Task<IActionResult> EstimerTarif(double latitude, double longitude, decimal? poids, int? clientId)
+        public async Task<IActionResult> EstimerTarif(double latitude, double longitude, decimal? poids, int? clientId, int? commandeId)
         {
             if (!ModelState.IsValid || !GeolocalisationService.EstDansZoneCouverte(latitude, longitude))
                 return BadRequest(new { message = "Le point de livraison doit se trouver en RDC." });
@@ -152,9 +152,15 @@ namespace BabaTrans.Controllers
 
             var depart = _geolocalisation.PointDeDepart(client);
             var itineraire = await _geolocalisation.CalculerItineraireAsync(depart.Point, new PointGps(latitude, longitude), HttpContext.RequestAborted);
-            var estimation = poids is > 0 and <= 10000
-                ? _tarificationService.Calculer(poids.Value, poidsReel: false, itineraire.DistanceKm)
-                : null;
+            // En modification (personnel uniquement), le poids réel des colis déjà pesés prime, comme sur la fiche commande.
+            var poidsColis = commandeId.HasValue && User.EstPersonnel()
+                ? (decimal)(await _context.Colis.Where(c => c.CommandeId == commandeId).SumAsync(c => (double?)c.Poids) ?? 0)
+                : 0m;
+            var estimation = poidsColis > 0
+                ? _tarificationService.Calculer(poidsColis, poidsReel: true, itineraire.DistanceKm)
+                : poids is > 0 and <= 10000
+                    ? _tarificationService.Calculer(poids.Value, poidsReel: false, itineraire.DistanceKm)
+                    : null;
 
             return Json(new
             {
@@ -168,7 +174,11 @@ namespace BabaTrans.Controllers
                     forfait = estimation.ForfaitBase,
                     poids = estimation.TarifPoids,
                     distance = estimation.TarifDistance,
-                    total = estimation.Total
+                    ajustement = estimation.Ajustement,
+                    libelleAjustement = estimation.LibelleAjustement,
+                    total = estimation.Total,
+                    poidsReel = estimation.PoidsReel,
+                    poidsKg = estimation.PoidsTotalKg
                 }
             });
         }

@@ -122,7 +122,7 @@
                     <div class="row g-3 mt-1 small">
                         <div class="col-4">
                             <div class="text-muted text-uppercase">Départ</div>
-                            <div class="text-heading">@(departDuSupermarche ? "Supermarché" : "Dépôt BABA-Trans")</div>
+                            <div class="text-heading">@(departDuSupermarche ? Model.Client!.NomSupermarche : "Dépôt BABA-Trans")</div>
                         </div>
                         <div class="col-4">
                             <div class="text-muted text-uppercase">Distance</div>
@@ -173,13 +173,20 @@
                             <span>@estimation.ForfaitBase.ToString("N0") FC</span>
                         </div>
                         <div class="bt-stat-row">
-                            <span class="text-muted">Poids</span>
+                            <span class="text-muted">Frais poids</span>
                             <span>@estimation.TarifPoids.ToString("N0") FC</span>
                         </div>
                         <div class="bt-stat-row">
-                            <span class="text-muted">Distance</span>
+                            <span class="text-muted">Frais km</span>
                             <span>@estimation.TarifDistance.ToString("N0") FC</span>
                         </div>
+                        @if (estimation.Ajustement > 0)
+                        {
+                            <div class="bt-stat-row">
+                                <span class="text-muted">@estimation.LibelleAjustement</span>
+                                <span>+ @estimation.Ajustement.ToString("N0") FC</span>
+                            </div>
+                        }
                     </div>
                     <div class="col-12">
                         <div class="bt-panel d-flex justify-content-between align-items-center">

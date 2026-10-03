@@ -39,7 +39,7 @@
     <div class="col-6 col-xl-3">
         <div class="bt-stat-card stat-accent">
             <div class="stat-icon"><i class="bi bi-check2-all"></i></div>
-            <div class="stat-value">@Model.TauxReussite %</div>
+            <div class="stat-value">@(Model.LivraisonsConfirmees + Model.LivraisonsEchouees == 0 ? "—" : $"{Model.TauxReussite} %")</div>
             <div class="stat-label">Taux de réussite des livraisons (@Model.LivraisonsConfirmees réussies, @Model.LivraisonsEchouees échouées)</div>
         </div>
     </div>
@@ -80,7 +80,7 @@
             </div>
             <div class="bt-card-body">
                 <div class="bt-stat-row">
-                    <span><i class="bi bi-signpost-split text-primary me-2"></i>Kilomètres de livraison commandés</span>
+                    <span><i class="bi bi-signpost-split text-primary me-2"></i>Distance totale des commandes (hors annulées)</span>
                     <span class="bt-stat-number">@Model.DistanceTotaleKm.ToString("N0") km</span>
                 </div>
                 <div class="bt-stat-row">

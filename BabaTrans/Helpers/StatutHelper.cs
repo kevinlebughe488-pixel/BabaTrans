@@ -11,7 +11,7 @@ namespace BabaTrans.Helpers
     /// </summary>
     public static class StatutHelper
     {
-        /// <summary>Retourne le libellé [Display(Name)] d'une valeur d'enum (ex : "QR-Code Généré").</summary>
+        /// <summary>Retourne le libellé [Display(Name)] d'une valeur d'enum (ex : "QR-code généré").</summary>
         public static string Libelle(this Enum valeur)
         {
             var membre = valeur.GetType().GetMember(valeur.ToString()).FirstOrDefault();

@@ -158,14 +158,13 @@ namespace BabaTrans.Controllers
                     precision = derniere.PrecisionMetres,
                     vitesse = derniere.VitesseKmh,
                     cap = derniere.Cap,
-                    ageSecondes,
-                    heure = derniere.DateEnregistrement.ToString("HH:mm:ss")
+                    // Durées relatives : le navigateur en déduit les heures avec sa propre horloge.
+                    ageSecondes
                 },
                 gpsActif = enCours && ageSecondes <= SecondesAvantSignalPerdu,
                 trace = positions.Select(p => new[] { p.Latitude, p.Longitude }),
                 distanceRestanteKm,
-                dureeRestanteMinutes,
-                arriveeEstimee = dureeRestanteMinutes.HasValue ? DateTime.Now.AddMinutes(dureeRestanteMinutes.Value).ToString("HH:mm") : null
+                dureeRestanteMinutes
             });
         }
 
@@ -209,7 +208,7 @@ namespace BabaTrans.Controllers
             });
             await _context.SaveChangesAsync();
 
-            return Json(new { enregistre = true, heure = maintenant.ToString("HH:mm:ss") });
+            return Json(new { enregistre = true });
         }
 
         // GET: SuiviGps/ItineraireRoutier?departLatitude=..&departLongitude=..&arriveeLatitude=..&arriveeLongitude=..

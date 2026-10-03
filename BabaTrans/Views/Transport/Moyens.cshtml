@@ -7,7 +7,7 @@
 <div class="bt-page-header">
     <div>
         <h4 class="fw-bold text-heading"><i class="bi bi-truck-front-fill text-primary me-2"></i>Flotte & véhicules</h4>
-        <div class="text-muted small">Camions, camionnettes et motos de la flotte BABA-Trans</div>
+        <div class="text-muted small">Véhicules de la flotte BABA-Trans et leur disponibilité</div>
     </div>
     <div class="bt-page-actions">
         <a asp-controller="SuiviGps" asp-action="Carte" class="bt-btn bt-btn-outline">
@@ -24,12 +24,12 @@
     <div class="row g-4">
         @foreach (var m in Model)
         {
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-4">
                 <div class="bt-card h-100 d-flex flex-column">
                     <div class="bt-card-header">
                         <div class="d-flex align-items-center gap-2 overflow-hidden">
                             <i class="bi bi-truck fs-5 text-primary"></i>
-                            <h5 class="mb-0 text-truncate">@m.Type</h5>
+                            <h5 class="mb-0 text-truncate" title="@m.Type">@m.Type</h5>
                         </div>
                         @if (!m.EstDisponible)
                         {

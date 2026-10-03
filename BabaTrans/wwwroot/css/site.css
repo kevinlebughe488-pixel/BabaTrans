@@ -1276,6 +1276,12 @@ button.bt-map-resultat:hover {
     background: #f0fdf4 !important;
 }
 
+/* Texte du panneau d'estimation : le montant reste à droite tant qu'il y a la place */
+.bt-estimation-texte {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
 .bt-chargement {
     opacity: 0.55;
     transition: opacity 0.2s;

@@ -15,8 +15,17 @@
         intervalleSuivi: 5
     }, window.BabaTransCarte || {});
 
-    const nombre = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+    // Même présentation que les pages du serveur : séparateur de milliers français, point décimal (voir Program.cs).
+    const formatNombre = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+    const nombre = { format: (valeur) => formatNombre.format(valeur).replace(',', '.') };
     const montant = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+    const ESPACE = '\u00a0'; // espace insécable : « ± 12 m » ne se coupe pas en fin de ligne
+
+    /** Heure de l'appareil de l'utilisateur, décalée de quelques secondes ou minutes. */
+    function heureDecalee(secondes, avecSecondes) {
+        return new Date(Date.now() + secondes * 1000).toLocaleTimeString('fr-FR',
+            avecSecondes ? { hour: '2-digit', minute: '2-digit', second: '2-digit' } : { hour: '2-digit', minute: '2-digit' });
+    }
 
     // ---------------------------------------------------------------------------
     // Outils communs
@@ -337,6 +346,7 @@
             const poids = Number.parseFloat(champPoids && champPoids.value);
             if (Number.isFinite(poids) && poids > 0) parametres.set('poids', String(poids));
             if (champClient && champClient.value) parametres.set('clientId', champClient.value);
+            if (bloc.dataset.commandeId) parametres.set('commandeId', bloc.dataset.commandeId);
 
             const numero = ++numeroRequete;
             panneau.classList.add('bt-chargement');
@@ -378,7 +388,7 @@
         }
 
         function afficherVide(texte) {
-            ['distance', 'duree', 'forfait', 'tarif-poids', 'tarif-distance'].forEach((c) => ecrire(panneau, c, '—'));
+            ['distance', 'duree', 'forfait', 'tarif-poids', 'tarif-distance', 'ajustement'].forEach((c) => ecrire(panneau, c, '—'));
             ecrire(panneau, 'total', '—');
             ecrire(panneau, 'detail', texte);
             ecrire(panneau, 'methode', '');
@@ -406,10 +416,14 @@
                 ecrire(panneau, 'forfait', `${montant.format(resultat.tarif.forfait)} FC`);
                 ecrire(panneau, 'tarif-poids', `${montant.format(resultat.tarif.poids)} FC`);
                 ecrire(panneau, 'tarif-distance', `${montant.format(resultat.tarif.distance)} FC`);
+                ecrire(panneau, 'libelle-ajustement', resultat.tarif.libelleAjustement);
+                ecrire(panneau, 'ajustement', resultat.tarif.ajustement > 0 ? `+ ${montant.format(resultat.tarif.ajustement)} FC` : '—');
                 ecrire(panneau, 'total', `${montant.format(resultat.tarif.total)} FC`);
-                ecrire(panneau, 'detail', `Départ : ${resultat.depart.libelle}`);
+                ecrire(panneau, 'detail', resultat.tarif.poidsReel
+                    ? `Poids réel des colis (${nombre.format(resultat.tarif.poidsKg)} kg) · départ : ${resultat.depart.libelle}`
+                    : `Départ : ${resultat.depart.libelle}`);
             } else {
-                ['forfait', 'tarif-poids', 'tarif-distance', 'total'].forEach((c) => ecrire(panneau, c, '—'));
+                ['forfait', 'tarif-poids', 'tarif-distance', 'ajustement', 'total'].forEach((c) => ecrire(panneau, c, '—'));
                 ecrire(panneau, 'detail', 'Indiquez le poids estimé pour obtenir le montant.');
             }
         }
@@ -495,7 +509,7 @@
 
         function placerLivreur(latlng, precision, actif, details) {
             if (!repereLivreur) {
-                repereLivreur = L.marker(latlng, { icon: icone('livreur', !actif), zIndexOffset: 1000 }).addTo(carte);
+                repereLivreur = L.marker(latlng, { icon: icone('livreur', !actif), zIndexOffset: 1000, title: details ? details.titre : 'Livreur' }).addTo(carte);
                 cerclePrecision = L.circle(latlng, { radius: precision || 0, color: '#0d6efd', weight: 1, fillOpacity: 0.08 }).addTo(carte);
             } else {
                 repereLivreur.setLatLng(latlng).setIcon(icone('livreur', !actif));
@@ -540,12 +554,12 @@
                 etat.dataset.etat = codeEtat;
                 etat.textContent = libelleEtat;
             }
-            ecrire(bloc, 'maj', position ? `${formaterAge(position.ageSecondes)} (${position.heure})` : '—');
+            ecrire(bloc, 'maj', position ? `${formaterAge(position.ageSecondes)} (${heureDecalee(-position.ageSecondes, true)})` : '—');
             ecrire(bloc, 'vitesse', position && position.vitesse != null ? `${nombre.format(position.vitesse)} km/h` : '—');
-            ecrire(bloc, 'precision', position && position.precision != null ? `± ${Math.round(position.precision)} m` : '—');
+            ecrire(bloc, 'precision', position && position.precision != null ? `±${ESPACE}${Math.round(position.precision)}${ESPACE}m` : '—');
             ecrire(bloc, 'distance-restante', donnees.distanceRestanteKm != null ? `${nombre.format(donnees.distanceRestanteKm)} km` : '—');
-            ecrire(bloc, 'arrivee', donnees.arriveeEstimee
-                ? `vers ${donnees.arriveeEstimee} (≈ ${formaterDuree(donnees.dureeRestanteMinutes)})`
+            ecrire(bloc, 'arrivee', donnees.dureeRestanteMinutes != null
+                ? `vers ${heureDecalee(donnees.dureeRestanteMinutes * 60, false)} (≈${ESPACE}${formaterDuree(donnees.dureeRestanteMinutes)})`
                 : '—');
 
             if (premierAffichage) {
@@ -656,8 +670,8 @@
                 dernierEnvoi = Date.now();
                 dernierPointEnvoye = { lat: coords.latitude, lng: coords.longitude };
                 message(reponse.enregistre
-                    ? `Position partagée à ${reponse.heure} · précision ± ${Math.round(coords.accuracy)} m`
-                    : `Position partagée · précision ± ${Math.round(coords.accuracy)} m`);
+                    ? `Position partagée à ${heureDecalee(0, true)} · précision${ESPACE}±${ESPACE}${Math.round(coords.accuracy)}${ESPACE}m`
+                    : `Position partagée · précision${ESPACE}±${ESPACE}${Math.round(coords.accuracy)}${ESPACE}m`);
             } catch (erreur) {
                 if (erreur.statut === 409 || erreur.statut === 403) {
                     arreter();
@@ -802,7 +816,7 @@
                 const latlng = L.latLng(livraison.position.latitude, livraison.position.longitude);
                 let repere = reperes.get(livraison.livraisonId);
                 if (!repere) {
-                    repere = L.marker(latlng).addTo(carte);
+                    repere = L.marker(latlng, { title: livraison.livreur }).addTo(carte);
                     reperes.set(livraison.livraisonId, repere);
                 }
                 repere.setLatLng(latlng).setIcon(icone('livreur', !livraison.gpsActif));

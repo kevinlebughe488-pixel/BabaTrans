@@ -4,6 +4,7 @@ namespace BabaTrans.Services
 {
     /// <param name="PoidsReel">Vrai si le poids vient des colis pesés, faux s'il s'agit du poids estimé de la commande.</param>
     /// <param name="DistanceKm">Distance de livraison ; absente pour une commande qui n'a pas encore été géolocalisée.</param>
+    /// <param name="MinimumApplique">Vrai si la somme des parts était inférieure au minimum facturable.</param>
     public sealed record EstimationTarifaire(
         decimal PoidsTotalKg,
         bool PoidsReel,
@@ -11,7 +12,14 @@ namespace BabaTrans.Services
         decimal ForfaitBase,
         decimal TarifPoids,
         decimal TarifDistance,
-        decimal Total);
+        decimal Total,
+        bool MinimumApplique)
+    {
+        /// <summary>Écart entre le total et la somme des parts (minimum facturable ou arrondi au millier) : affiché pour que le détail tombe juste.</summary>
+        public decimal Ajustement => Total - (ForfaitBase + TarifPoids + TarifDistance);
+
+        public string LibelleAjustement => MinimumApplique ? "Minimum facturable" : "Arrondi au millier";
+    }
 
     public sealed record ParametresTarification(
         decimal ForfaitBase,
@@ -60,7 +68,8 @@ namespace BabaTrans.Services
             var parametres = LireParametres();
             var tarifPoids = Math.Round(poidsKg * parametres.TarifParKg);
             var tarifDistance = Math.Round((distanceKm ?? 0m) * parametres.TarifParKm);
-            var total = Math.Max(parametres.MinimumFacturable, parametres.ForfaitBase + tarifPoids + tarifDistance);
+            var sousTotal = parametres.ForfaitBase + tarifPoids + tarifDistance;
+            var total = Math.Max(parametres.MinimumFacturable, sousTotal);
 
             return new EstimationTarifaire(
                 Math.Round(poidsKg, 2),
@@ -69,7 +78,8 @@ namespace BabaTrans.Services
                 parametres.ForfaitBase,
                 tarifPoids,
                 tarifDistance,
-                ArrondirAuMillier(total));
+                ArrondirAuMillier(total),
+                MinimumApplique: sousTotal < parametres.MinimumFacturable);
         }
 
         private decimal LireDecimal(string cle, decimal valeurParDefaut)

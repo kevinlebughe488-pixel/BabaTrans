@@ -82,9 +82,9 @@ namespace BabaTrans.Models
 
     public enum StatutCommande
     {
-        [Display(Name = "En Attente")]
+        [Display(Name = "En attente")]
         EnAttente,
-        [Display(Name = "En Cours")]
+        [Display(Name = "En cours")]
         EnCours,
         [Display(Name = "Livrée")]
         Livree,
