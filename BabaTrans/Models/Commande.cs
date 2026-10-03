@@ -46,6 +46,26 @@ namespace BabaTrans.Models
         [StringLength(50)]
         public string? TelephoneDestination { get; set; }
 
+        // Géolocalisation : seul le point de destination vient du formulaire (carte).
+        // Le départ, la distance et la durée sont calculés par le serveur à l'enregistrement.
+        [Display(Name = "Latitude de destination")]
+        [Range(-90, 90, ErrorMessage = "La latitude doit être comprise entre -90 et 90.")]
+        public double? LatitudeDestination { get; set; }
+
+        [Display(Name = "Longitude de destination")]
+        [Range(-180, 180, ErrorMessage = "La longitude doit être comprise entre -180 et 180.")]
+        public double? LongitudeDestination { get; set; }
+
+        /// <summary>Point d'enlèvement retenu au calcul : le supermarché s'il est géolocalisé, sinon le dépôt.</summary>
+        public double? LatitudeDepart { get; set; }
+        public double? LongitudeDepart { get; set; }
+
+        [Display(Name = "Distance (km)")]
+        public decimal? DistanceKm { get; set; }
+
+        [Display(Name = "Durée estimée (min)")]
+        public int? DureeEstimeeMinutes { get; set; }
+
         [Display(Name = "Statut")]
         public StatutCommande Statut { get; set; } = StatutCommande.EnAttente;
 
@@ -56,20 +76,15 @@ namespace BabaTrans.Models
         [ForeignKey("ClientId")]
         public virtual Client? Client { get; set; }
 
-        [Display(Name = "Trajet")]
-        public int? TrajetId { get; set; }
-        [ForeignKey("TrajetId")]
-        public virtual Trajet? Trajet { get; set; }
-
         // Navigation
         public virtual ICollection<Colis> Colis { get; set; } = new List<Colis>();
     }
 
     public enum StatutCommande
     {
-        [Display(Name = "En Attente")]
+        [Display(Name = "En attente")]
         EnAttente,
-        [Display(Name = "En Cours")]
+        [Display(Name = "En cours")]
         EnCours,
         [Display(Name = "Livrée")]
         Livree,

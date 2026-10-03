@@ -17,8 +17,8 @@ namespace BabaTrans.Data
         public DbSet<Colis> Colis { get; set; }
         public DbSet<TimbreQRCode> TimbresQRCode { get; set; }
         public DbSet<Livraison> Livraisons { get; set; }
-        public DbSet<Trajet> Trajets { get; set; }
         public DbSet<MoyenTransport> MoyensTransport { get; set; }
+        public DbSet<PositionLivreur> PositionsLivreur { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -61,10 +61,8 @@ namespace BabaTrans.Data
                 .HasPrecision(10, 2);
 
             builder.Entity<Commande>()
-                .HasOne(c => c.Trajet)
-                .WithMany(t => t.Commandes)
-                .HasForeignKey(c => c.TrajetId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .Property(c => c.DistanceKm)
+                .HasPrecision(10, 2);
 
             // Configuration Colis
             builder.Entity<Colis>()
@@ -73,12 +71,15 @@ namespace BabaTrans.Data
                 .HasForeignKey(c => c.CommandeId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configuration Trajet
-            builder.Entity<Trajet>()
-                .HasOne(t => t.MoyenTransport)
-                .WithMany(m => m.Trajets)
-                .HasForeignKey(t => t.MoyenTransportId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // Configuration PositionLivreur : l'index sert à lire rapidement la dernière position d'une livraison.
+            builder.Entity<PositionLivreur>()
+                .HasOne(p => p.Livraison)
+                .WithMany(l => l.Positions)
+                .HasForeignKey(p => p.LivraisonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<PositionLivreur>()
+                .HasIndex(p => new { p.LivraisonId, p.DateEnregistrement });
 
             // Index unique pour le code de suivi du colis
             builder.Entity<Colis>()

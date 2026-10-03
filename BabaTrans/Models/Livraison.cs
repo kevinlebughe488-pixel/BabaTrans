@@ -43,13 +43,16 @@ namespace BabaTrans.Models
         public int? MoyenTransportId { get; set; }
         [ForeignKey("MoyenTransportId")]
         public virtual MoyenTransport? MoyenTransport { get; set; }
+
+        // Navigation : positions GPS du livreur pendant l'acheminement
+        public virtual ICollection<PositionLivreur> Positions { get; set; } = new List<PositionLivreur>();
     }
 
     public enum StatutLivraison
     {
-        [Display(Name = "En Attente")]
+        [Display(Name = "En attente")]
         EnAttente,
-        [Display(Name = "En Cours")]
+        [Display(Name = "En cours")]
         EnCours,
         [Display(Name = "Livrée")]
         Livree,

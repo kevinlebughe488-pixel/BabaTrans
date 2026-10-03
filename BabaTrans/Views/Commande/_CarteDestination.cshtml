@@ -1,0 +1,86 @@
+@model BabaTrans.Models.Commande
+@using System.Text.Json
+@inject BabaTrans.Services.GeolocalisationService Geolocalisation
+@inject BabaTrans.Services.TarificationService Tarification
+@* Choix du point de livraison sur la carte et montant estimé (poids + distance), communs à la création et à la modification. *@
+@{
+    var villes = Geolocalisation.Villes.ToDictionary(v => v.Key, v => new[] { v.Value.Latitude, v.Value.Longitude });
+    var tarifs = Tarification.LireParametres();
+}
+
+<div class="col-12" data-bt-carte="commande"
+     data-url-estimation="@Url.Action("EstimerTarif", "Commande")"
+     data-commande-id="@(Model is { Id: > 0 } commandeExistante ? commandeExistante.Id : null)"
+     data-villes="@JsonSerializer.Serialize(villes)"
+     data-centre="@ViewBag.CentreCarte">
+    <label class="bt-form-label" for="rechercheAdresse">Point de livraison</label>
+    <div class="bt-map-toolbar">
+        <div class="input-group">
+            <input type="search" id="rechercheAdresse" class="bt-form-control" data-role="recherche" autocomplete="off"
+                   placeholder="Rechercher une adresse, un quartier, une ville..." />
+            <button type="button" class="bt-btn bt-btn-outline" data-role="rechercher" aria-label="Rechercher l'adresse">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+        <button type="button" class="bt-btn bt-btn-outline" data-role="ma-position">
+            <i class="bi bi-crosshair"></i> Ma position
+        </button>
+    </div>
+    <div class="bt-map-resultats" data-role="resultats" hidden></div>
+    <div class="bt-map bt-map-lg" data-role="carte" role="region" aria-label="Carte du point de livraison"></div>
+    <input type="hidden" id="LatitudeDestination" name="LatitudeDestination" value="@CarteHelper.Invariant(Model.LatitudeDestination)" data-role="latitude" />
+    <input type="hidden" id="LongitudeDestination" name="LongitudeDestination" value="@CarteHelper.Invariant(Model.LongitudeDestination)" data-role="longitude" />
+    <div class="small text-warning mt-1" data-role="message" hidden></div>
+    <span asp-validation-for="LatitudeDestination" class="text-danger small"></span>
+    <div class="bt-form-hint">
+        Cliquez sur la carte ou faites glisser le repère rouge à l'endroit exact de la livraison.
+        La distance est calculée depuis le supermarché expéditeur (ou le dépôt <span class="text-nowrap">BABA-Trans</span> s'il n'est pas localisé).
+    </div>
+
+    <div class="bt-panel mt-3" data-role="estimation" aria-live="polite">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div class="bt-estimation-texte">
+                <div class="fw-semibold text-heading d-flex align-items-center gap-2">
+                    <i class="bi bi-calculator-fill text-primary"></i> Montant estimé de la livraison
+                </div>
+                <div class="text-muted small mt-1">
+                    @tarifs.ForfaitBase.ToString("N0") FC + @tarifs.TarifParKg.ToString("N0") FC par kg + @tarifs.TarifParKm.ToString("N0") FC par km
+                    (minimum @tarifs.MinimumFacturable.ToString("N0") FC, arrondi au millier supérieur). Ajusté après pesée des colis.
+                </div>
+            </div>
+            <div class="text-md-end ms-md-auto">
+                <div class="text-primary fw-bold fs-5" data-champ="total">—</div>
+                <div class="text-muted small" data-champ="detail">Placez le point de livraison sur la carte.</div>
+            </div>
+        </div>
+        <div class="row g-2 mt-2 small">
+            <div class="col-6">
+                <div class="text-muted text-uppercase">Distance</div>
+                <div class="fw-semibold text-heading" data-champ="distance">—</div>
+            </div>
+            <div class="col-6">
+                <div class="text-muted text-uppercase">Durée estimée</div>
+                <div class="fw-semibold text-heading" data-champ="duree">—</div>
+            </div>
+        </div>
+        <div class="row g-2 mt-1 small" aria-label="Détail du montant">
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase">Forfait</div>
+                <div data-champ="forfait">—</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase">Frais poids</div>
+                <div data-champ="tarif-poids">—</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase">Frais km</div>
+                <div data-champ="tarif-distance">—</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted text-uppercase" data-champ="libelle-ajustement">Arrondi</div>
+                <div data-champ="ajustement">—</div>
+            </div>
+        </div>
+        <div class="text-muted small mt-2" data-champ="methode"></div>
+    </div>
+</div>

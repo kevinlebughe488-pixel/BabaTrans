@@ -49,6 +49,14 @@ builder.Services.AddScoped<QRCodeService>();
 builder.Services.AddScoped<TarificationService>();
 builder.Services.AddScoped<CompteClientService>();
 
+// Géolocalisation : les itinéraires calculés sont gardés en cache pour ne pas solliciter le service routier à chaque saisie.
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<GeolocalisationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("Geolocalisation:DelaiItineraireSecondes", 5));
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("BabaTrans/1.0");
+});
+
 // Ajouter MVC, avec les messages d'erreur de saisie en français
 builder.Services.AddControllersWithViews(options =>
 {

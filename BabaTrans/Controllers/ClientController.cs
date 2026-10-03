@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BabaTrans.Data;
 using BabaTrans.Models;
+using BabaTrans.Services;
 
 namespace BabaTrans.Controllers
 {
@@ -52,10 +53,11 @@ namespace BabaTrans.Controllers
         // POST: Client/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("NomSupermarche,Adresse,Telephone,Email,PersonneContact")] Client client)
+        public async Task<IActionResult> Create([Bind("NomSupermarche,Adresse,Telephone,Email,PersonneContact,Latitude,Longitude")] Client client)
         {
             client.Email = string.IsNullOrWhiteSpace(client.Email) ? null : client.Email.Trim();
             await ValiderEmailUniqueAsync(client.Email, idClient: null);
+            ValiderEmplacement(client);
 
             if (ModelState.IsValid)
             {
@@ -79,7 +81,7 @@ namespace BabaTrans.Controllers
         // POST: Client/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,NomSupermarche,Adresse,Telephone,Email,PersonneContact,EstActif")] Client client)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,NomSupermarche,Adresse,Telephone,Email,PersonneContact,EstActif,Latitude,Longitude")] Client client)
         {
             if (id != client.Id) return NotFound();
 
@@ -88,6 +90,7 @@ namespace BabaTrans.Controllers
 
             client.Email = string.IsNullOrWhiteSpace(client.Email) ? null : client.Email.Trim();
             await ValiderEmailUniqueAsync(client.Email, idClient: id);
+            ValiderEmplacement(client);
 
             // Changer l'email couperait le lien avec le compte Client qui se connecte avec l'ancien.
             var emailModifie = !string.Equals(clientExistant.Email, client.Email, StringComparison.OrdinalIgnoreCase);
@@ -102,6 +105,9 @@ namespace BabaTrans.Controllers
                 clientExistant.Telephone = client.Telephone;
                 clientExistant.Email = client.Email;
                 clientExistant.PersonneContact = client.PersonneContact;
+                // Les commandes déjà passées gardent la distance calculée à leur création.
+                clientExistant.Latitude = client.Latitude;
+                clientExistant.Longitude = client.Longitude;
 
                 // Activer ou désactiver un supermarché reste réservé à l'administrateur.
                 if (User.IsInRole("Administrateur"))
@@ -143,6 +149,17 @@ namespace BabaTrans.Controllers
             var dejaUtilise = await _context.Clients.AnyAsync(c => c.Email == email && c.Id != idClient);
             if (dejaUtilise)
                 ModelState.AddModelError(nameof(Client.Email), "Cet email est déjà utilisé par un autre supermarché.");
+        }
+
+        /// <summary>L'emplacement est facultatif, mais s'il est donné il doit être complet et situé en RDC.</summary>
+        private void ValiderEmplacement(Client client)
+        {
+            if (client.Latitude is null && client.Longitude is null)
+                return;
+
+            if (client.Latitude is not double latitude || client.Longitude is not double longitude
+                || !GeolocalisationService.EstDansZoneCouverte(latitude, longitude))
+                ModelState.AddModelError(nameof(Client.Latitude), "Placez le supermarché sur la carte, en RDC.");
         }
 
         private async Task<Utilisateur?> TrouverCompteClientAsync(string? email)

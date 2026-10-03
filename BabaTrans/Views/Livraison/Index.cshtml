@@ -1,7 +1,7 @@
 @model IEnumerable<BabaTrans.Models.Livraison>
 @{
-    ViewData["Title"] = "Gestion des Livraisons & Tournées";
     var estPersonnel = User.EstPersonnel();
+    ViewData["Title"] = estPersonnel ? "Gestion des Livraisons & Tournées" : "Mes livraisons";
 }
 
 <div class="bt-page-header">
@@ -17,9 +17,14 @@
     </div>
     @if (estPersonnel)
     {
-        <a asp-action="Create" class="bt-btn bt-btn-primary">
-            <i class="bi bi-plus-lg"></i> Affecter une livraison
-        </a>
+        <div class="bt-page-actions">
+            <a asp-controller="SuiviGps" asp-action="Carte" class="bt-btn bt-btn-outline">
+                <i class="bi bi-broadcast-pin"></i> Carte en direct
+            </a>
+            <a asp-action="Create" class="bt-btn bt-btn-primary">
+                <i class="bi bi-plus-lg"></i> Affecter une livraison
+            </a>
+        </div>
     }
 </div>
 
@@ -31,14 +36,9 @@
                     <tr>
                         <th>N°</th>
                         <th>Colis</th>
-                        <th>Supermarché & destination</th>
-                        @if (estPersonnel)
-                        {
-                            <th>Livreur</th>
-                        }
-                        <th>Véhicule</th>
-                        <th>Départ</th>
-                        <th>Arrivée</th>
+                        <th class="text-wrap">Supermarché&nbsp;& destination</th>
+                        <th>@(estPersonnel ? "Livreur & véhicule" : "Véhicule")</th>
+                        <th>Départ / arrivée</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -51,29 +51,31 @@
                             <tr>
                                 <td class="fw-bold text-heading">#@liv.Id</td>
                                 <td>
-                                    <div class="fw-semibold text-heading">Colis #@liv.ColisId</div>
-                                    <span class="bt-code">@liv.Colis?.CodeSuivi</span>
+                                    @* Sur téléphone, le tableau défile : le colis mène directement à la livraison et montre son statut. *@
+                                    <a asp-action="Details" asp-route-id="@liv.Id" class="fw-semibold text-decoration-none">Colis #@liv.ColisId</a>
+                                    <div><span class="bt-code">@liv.Colis?.CodeSuivi</span></div>
+                                    <span class="bt-badge @liv.Statut.Badge() d-md-none mt-1">@liv.Statut.Libelle()</span>
                                 </td>
                                 <td>
                                     <div class="text-heading">@(liv.Colis?.Commande?.Client?.NomSupermarche ?? "Inconnu")</div>
                                     <div class="text-muted small"><i class="bi bi-geo-alt text-danger me-1"></i>@(liv.Colis?.Commande?.VilleDestination ?? "—")</div>
                                 </td>
-                                @if (estPersonnel)
-                                {
-                                    <td>
-                                        @if (liv.Livreur != null)
+                                <td>
+                                    @if (estPersonnel)
+                                    {
+                                        if (liv.Livreur != null)
                                         {
-                                            <div class="fw-semibold text-heading">@liv.Livreur.Prenom @liv.Livreur.Nom</div>
-                                            <div class="text-muted small">@liv.Livreur.Immatriculation</div>
+                                            <div class="fw-semibold text-heading text-nowrap">@liv.Livreur.Prenom @liv.Livreur.Nom</div>
                                         }
                                         else
                                         {
-                                            <span class="text-muted">Non affecté</span>
+                                            <div class="text-muted">Non affecté</div>
                                         }
-                                    </td>
-                                }
-                                <td>
-                                    @if (liv.MoyenTransport != null)
+                                        <div class="text-muted small text-nowrap">
+                                            @string.Join(" · ", new[] { liv.MoyenTransport?.Type, liv.MoyenTransport?.Immatriculation }.Where(t => !string.IsNullOrEmpty(t)))
+                                        </div>
+                                    }
+                                    else if (liv.MoyenTransport != null)
                                     {
                                         <div class="text-heading">@liv.MoyenTransport.Type</div>
                                         <div class="text-muted small font-monospace">@(liv.MoyenTransport.Immatriculation ?? "—")</div>
@@ -83,8 +85,10 @@
                                         <span class="text-muted">—</span>
                                     }
                                 </td>
-                                <td class="text-nowrap">@(liv.DateDepart?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
-                                <td class="text-nowrap">@(liv.DateArrivee?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                                <td class="text-nowrap">
+                                    <div>@(liv.DateDepart?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div>
+                                    <div class="text-muted small">@(liv.DateArrivee.HasValue ? $"arrivée {liv.DateArrivee:dd/MM HH:mm}" : "")</div>
+                                </td>
                                 <td>
                                     <span class="bt-badge @liv.Statut.Badge()">@liv.Statut.Libelle()</span>
                                 </td>
@@ -100,7 +104,7 @@
                     else
                     {
                         <tr>
-                            <td colspan="@(estPersonnel ? 9 : 8)">
+                            <td colspan="7">
                                 <div class="bt-empty-state">
                                     <i class="bi bi-send-check"></i>
                                     <h5>Aucune livraison</h5>

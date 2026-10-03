@@ -57,7 +57,10 @@ namespace BabaTrans.Controllers
 
                 TotalMoyensTransport = await _context.MoyensTransport.CountAsync(),
                 MoyensDisponibles = await _context.MoyensTransport.CountAsync(m => m.EstDisponible),
-                TotalTrajets = await _context.Trajets.CountAsync(),
+                DistanceTotaleKm = await _context.Commandes
+                    .Where(c => c.Statut != StatutCommande.Annulee)
+                    .SumAsync(c => c.DistanceKm) ?? 0m,
+                LivraisonsSuiviesGps = await _context.Livraisons.CountAsync(l => l.Positions.Any()),
 
                 DernieresCommandes = await _context.Commandes
                     .Include(c => c.Client)

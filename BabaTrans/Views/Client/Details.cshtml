@@ -41,6 +41,30 @@
             </div>
         </div>
 
+        <div class="bt-card mb-4">
+            <div class="bt-card-header">
+                <h5>Emplacement</h5>
+            </div>
+            <div class="bt-card-body">
+                @if (CarteHelper.Coordonnees(Model.Latitude, Model.Longitude) is string emplacement)
+                {
+                    <div data-bt-carte="itineraire" data-depart="@emplacement" data-libelle-depart="@Model.NomSupermarche">
+                        <div class="bt-map" data-role="carte" style="height: 200px;" role="region" aria-label="Carte de l'emplacement du supermarché"></div>
+                    </div>
+                    <div class="text-muted small mt-2">Point de départ des livraisons de ce supermarché.</div>
+                }
+                else
+                {
+                    <div class="text-muted small">
+                        <i class="bi bi-geo me-1"></i>Supermarché non localisé : la distance des livraisons est calculée depuis le dépôt BABA-Trans.
+                        <div class="mt-2">
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-geo-alt"></i> Placer sur la carte</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
         <div class="bt-card">
             <div class="bt-card-header">
                 <h5>Compte de connexion</h5>
@@ -131,3 +155,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_CarteScripts" />
+}

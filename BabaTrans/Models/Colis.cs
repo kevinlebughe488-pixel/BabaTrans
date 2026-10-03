@@ -46,9 +46,9 @@ namespace BabaTrans.Models
     {
         [Display(Name = "Enregistré")]
         Enregistre,
-        [Display(Name = "QR-Code Généré")]
+        [Display(Name = "QR-code généré")]
         QRCodeGenere,
-        [Display(Name = "En Transit")]
+        [Display(Name = "En transit")]
         EnTransit,
         [Display(Name = "Arrivé")]
         Arrive,

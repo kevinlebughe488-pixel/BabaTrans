@@ -20,7 +20,7 @@
                            placeholder="Ex : BT-20260926-XXXXXXXX" required maxlength="50" autocomplete="off" aria-label="Code de suivi" />
                 </div>
                 <div class="col-md-3">
-                    <button type="submit" class="bt-btn bt-btn-primary w-100 py-2 justify-content-center">
+                    <button type="submit" class="bt-btn bt-btn-primary w-100 h-100 py-2 justify-content-center">
                         <i class="bi bi-search"></i> Rechercher
                     </button>
                 </div>
@@ -43,7 +43,8 @@
                     StatutColis.Livre => 5,
                     _ => 0
                 };
-                string Etat(int etape) => retourne ? "" : rang >= etape ? "completed" : rang + 1 == etape ? "active" : "";
+                // L'étape actuelle est mise en évidence (et non la suivante) : un colis en transit n'apparaît pas comme arrivé.
+                string Etat(int etape) => retourne ? "" : rang > etape || (rang == etape && etape == 5) ? "completed" : rang == etape ? "active" : "";
 
                 <div class="bt-card fade-in mb-4">
                     <div class="bt-card-header">
@@ -83,6 +84,10 @@
                             <div class="bt-progress-step @Etat(2)">
                                 <div class="step-icon"><i class="bi bi-qr-code"></i></div>
                                 <div class="step-label">Timbre QR émis</div>
+                                @if (rang >= 2 && colis.TimbreQRCode != null)
+                                {
+                                    <div class="step-date">@colis.TimbreQRCode.DateGeneration.ToString("dd/MM HH:mm")</div>
+                                }
                             </div>
                             <div class="bt-progress-step @Etat(3)">
                                 <div class="step-icon"><i class="bi bi-truck"></i></div>
@@ -176,6 +181,12 @@
                         </div>
                     </div>
                 </div>
+
+                // Carte en direct : réservée au personnel, au livreur et au supermarché propriétaire.
+                if (Model.AccesComplet && derniere != null && derniere.Statut != StatutLivraison.Echouee)
+                {
+                    <partial name="_SuiviGps" model="derniere" />
+                }
             }
             else
             {
@@ -190,3 +201,7 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_CarteScripts" />
+}

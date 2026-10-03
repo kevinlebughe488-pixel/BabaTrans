@@ -46,7 +46,7 @@ Le système est la traduction logicielle exacte des trois diagrammes fournis :
                              [ Livreur ]
                                   │
                         3. Scan Départ (En Transit)
-                        4. Acheminement Inter-Villes
+                        4. Acheminement suivi par GPS (temps réel)
                         5. Scan Arrivée (Arrivé)
                         6. Confirmer Livraison (Livré)
                                   │
@@ -66,7 +66,10 @@ Le système distingue **4 acteurs métiers** avec des privilèges stricts :
 | **Passer / Déposer une commande** | ✅ | ✅ | ❌ | ✅ | `CommandeController` (`Create`, `Index`) |
 | **Enregistrer un colis** | ✅ | ✅ | ❌ | ❌ | `ColisController` (`Create`) |
 | **Générer le timbre QR-code** | ✅ | ✅ (Automatique) | ❌ | ❌ | `ColisController` (`GenererQRCode`) via `QRCodeService` |
-| **Affecter moyen de transport / tournée** | ✅ | ✅ | ❌ | ❌ | `LivraisonController` (`Create`), `TransportController` |
+| **Affecter moyen de transport / tournée** | ✅ | ✅ | ❌ | ❌ | `LivraisonController` (`Create`), `TransportController` (`Moyens`) |
+| **Estimer le tarif (poids + distance)** | ✅ | ✅ | ❌ | ✅ | `CommandeController` (`EstimerTarif`) via `TarificationService` et `GeolocalisationService` |
+| **Partager sa position GPS** | ❌ | ❌ | ✅ (livreur affecté) | ❌ | `SuiviGpsController` (`EnvoyerPosition`) |
+| **Suivre le livreur en temps réel** | ✅ | ✅ | ✅ (ses livraisons) | ✅ (ses colis) | `SuiviGpsController` (`Position`), `Carte` et `Flotte` pour le personnel |
 | **Suivre un colis** | ✅ | ✅ | ✅ | ✅ (Public) | `ColisController` (`Suivi`, `Details`) |
 | **Scanner le colis (Départ & Arrivée)** | ✅ | ✅ | ✅ | ❌ | `LivraisonController` (`ScannerDepart`, `ScannerArrivee`) |
 | **Confirmer la livraison** | ✅ | ✅ | ✅ | ❌ | `LivraisonController` (`Confirmer`) |
@@ -74,16 +77,18 @@ Le système distingue **4 acteurs métiers** avec des privilèges stricts :
 
 ### 2.2 Diagramme de Classes & Entités EF Core
 
-Le modèle comprend 9 entités interconnectées dans [`Data/BabaTransContext.cs`](file:///c:/Users/kevin/Desktop/atelier%20génie%20logiciel/BabaTrans/Data/BabaTransContext.cs) :
+Le modèle comprend 8 entités interconnectées dans [`Data/BabaTransContext.cs`](file:///c:/Users/kevin/Desktop/atelier%20génie%20logiciel/BabaTrans/Data/BabaTransContext.cs) :
 
 1. **`Utilisateur`** (hérite de `IdentityUser`) :
    - Champs : `Nom`, `Prenom`, `DateCreation`, `EstActif`, `Matricule` (pour Agent), `Immatriculation` (pour Livreur).
 2. **`Client`** :
    - Représente le supermarché partenaire (`NomSupermarche`, `Adresse`, `Telephone`, `Email`, `PersonneContact`, `EstActif`).
+   - Emplacement facultatif (`Latitude`, `Longitude`) : point de départ des livraisons pour le calcul de la distance (sinon, dépôt BABA-Trans).
    - Relation : `1 Client` $\rightarrow$ `0..* Commandes`.
 3. **`Commande`** :
-   - Représente le bon d'expédition (`DateCommande`, `VilleDestination`, `Description`, `Statut`).
-   - Clés étrangères : `ClientId`, `TrajetId` (nullable).
+   - Représente le bon d'expédition (`DateCommande`, `VilleDestination`, `Description`, `Statut`, `PoidsEstimeKg`, adresse et contact du destinataire).
+   - Géolocalisation : `LatitudeDestination`/`LongitudeDestination` (point choisi sur la carte), puis, calculés par le serveur, `LatitudeDepart`/`LongitudeDepart`, `DistanceKm` et `DureeEstimeeMinutes`.
+   - Clé étrangère : `ClientId`.
    - Relation : `1 Commande` $\rightarrow$ `1..* Colis`.
 4. **`Colis`** :
    - Représente un paquet physique (`Description`, `Poids`, `Statut`, `DateEnregistrement`, `CodeSuivi`).
@@ -96,9 +101,9 @@ Le modèle comprend 9 entités interconnectées dans [`Data/BabaTransContext.cs`
    - Représente une expédition/tournée (`DateDepart`, `DateArrivee`, `DateLivraison`, `Statut`, `Commentaire`).
    - Clés étrangères : `ColisId`, `LivreurId` (vers `Utilisateur`), `MoyenTransportId` (vers `MoyenTransport`).
    - **Lien direct avec le véhicule** : l'Agent affecte le moyen de transport au moment de la création de la livraison, assurant la traçabilité complète du flux logistique.
-7. **`Trajet`** :
-   - Ligne logistique inter-villes (`VilleDepart`, `VilleArrivee`, `DistanceKm`, `DureeEstimeeHeures`).
-   - Clé étrangère : `MoyenTransportId`.
+7. **`PositionLivreur`** :
+   - Position GPS envoyée par le téléphone du livreur pendant une livraison en cours (`Latitude`, `Longitude`, `PrecisionMetres`, `VitesseKmh`, `Cap`, `DateEnregistrement`).
+   - Clé étrangère : `LivraisonId` (suppression en cascade). L'historique forme la trace du trajet parcouru.
 8. **`MoyenTransport`** :
    - Véhicule de la flotte (`Type`, `Immatriculation`, `Capacite`, `EstDisponible`, `Description`).
 
@@ -106,11 +111,19 @@ Le modèle comprend 9 entités interconnectées dans [`Data/BabaTransContext.cs`
 Le flux suit rigoureusement les étapes de l'énoncé :
 1. **Dépôt commande :** Le client supermarché ou l'agent initie une `Commande`.
 2. **Enregistrement colis :** L'agent saisit le `Colis` $\rightarrow$ Le système génère automatiquement un code de suivi unique (`BT-YYYYMMDD-XXXXXXXX`) et calcule son image QR en PNG Base64 (`TimbreQRCode`). Le timbre est imprimable immédiatement.
-3. **Affectation :** L'Agent (ou l'Administrateur) planifie la logistique : il configure/affecte le `Trajet` et le `MoyenTransport` associé à la commande, puis crée la `Livraison` en affectant le `Colis` au `Livreur` responsable. Le livreur ne choisit pas le moyen de transport ni son affectation, il reçoit la mission pré-affectée.
+3. **Affectation :** L'Agent (ou l'Administrateur) crée la `Livraison` en affectant le `Colis` au `Livreur` responsable et au `MoyenTransport`. Le livreur ne choisit pas le moyen de transport ni son affectation, il reçoit la mission pré-affectée.
 4. **Scan départ :** Le livreur clique sur "Valider Scan Départ" $\rightarrow$ Le colis passe en statut `EnTransit` et la livraison en `EnCours`.
-5. **Acheminement :** Le colis voyage le long du `Trajet` affecté.
+5. **Acheminement :** Le livreur active le partage GPS sur son téléphone ; sa position est envoyée toutes les 10 secondes (`PositionLivreur`). Le personnel et le supermarché expéditeur suivent le livreur en temps réel sur une carte (distance restante, heure d'arrivée estimée).
 6. **Scan arrivée :** Le livreur valide le "Scan Arrivée" $\rightarrow$ Le colis passe au statut `Arrive`.
 7. **Confirmation livraison :** Le livreur saisit le nom du signataire ou un commentaire $\rightarrow$ Le colis passe en `Livre`, la livraison en `Livree`. Si tous les colis d'une commande sont livrés, la commande globale est automatiquement clôturée en `Livree`.
+
+### 2.4 Tarification & Géolocalisation
+- **Choix de la destination :** le client place le point de livraison sur une carte Leaflet / OpenStreetMap (clic, repère déplaçable, recherche d'adresse Nominatim ou « Ma position »). Ville, quartier et adresse sont pré-remplis.
+- **Distance :** calculée par le serveur (jamais confiance au navigateur) depuis le supermarché (ou le dépôt) jusqu'au point de livraison, par la route via un service OSRM. En cas d'indisponibilité, distance à vol d'oiseau × coefficient routier (1,3). Les livraisons sont limitées à la RDC.
+- **Tarif :** `forfait + poids × tarif/kg + distance × tarif/km`, avec un minimum facturable, arrondi au millier de FC supérieur (`Tarification` dans `appsettings.json`).
+- **Réglages :** section `Geolocalisation` de `appsettings.json` (dépôt, coefficient routier, vitesse moyenne, services d'itinéraire et de géocodage, tuiles de carte, intervalle de rafraîchissement, villes connues).
+- **HTTPS :** les navigateurs n'autorisent le GPS que sur une page sécurisée (`https://`) ou sur `localhost`. Pour un livreur sur téléphone, lancer l'application en HTTPS (profil `https`).
+- **Ancien module « Trajets inter-villes » :** retiré. Sur une base existante, la table `Trajets` et la colonne `Commandes.TrajetId` sont conservées mais ne sont plus utilisées.
 
 ---
 
@@ -167,7 +180,8 @@ BabaTrans/
 │   ├── CommandeController.cs      # CRUD des commandes expéditeur (Admin, Agent, Client)
 │   ├── ColisController.cs         # Enregistrement colis, QR generation, suivi public (/Colis/Suivi)
 │   ├── LivraisonController.cs     # Affectation tournée, ScannerDepart, ScannerArrivee, Confirmer
-│   ├── TransportController.cs     # Flotte (MoyensTransport) et lignes (Trajets)
+│   ├── TransportController.cs     # Flotte (MoyensTransport)
+│   ├── SuiviGpsController.cs      # Positions GPS du livreur, suivi en temps réel, carte de la flotte
 │   └── RapportController.cs       # Statistiques avancées et indicateurs SI (Admin)
 ├── Models/
 │   ├── Utilisateur.cs             # Extension de IdentityUser (Matricule, Immatriculation)
@@ -176,19 +190,23 @@ BabaTrans/
 │   ├── Colis.cs                   # Entité Colis + Enum StatutColis
 │   ├── TimbreQRCode.cs            # Entité QR Code (Image Base64)
 │   ├── Livraison.cs               # Entité Livraison + Enum StatutLivraison
-│   ├── Trajet.cs                  # Entité Ligne de transport inter-villes
+│   ├── PositionLivreur.cs         # Entité Position GPS du livreur
 │   └── MoyenTransport.cs          # Entité Véhicule (Camion, Van, Moto...)
 ├── Data/
 │   ├── BabaTransContext.cs        # DbContext EF Core avec Fluent API & seed matériel
-│   └── DbInitializer.cs           # Seeder des 4 rôles, comptes démo, clients, trajets, colis test
+│   └── DbInitializer.cs           # Seeder des 4 rôles, comptes démo, clients, colis test, mise à jour du schéma
 ├── Services/
-│   └── QRCodeService.cs           # Service wrapper QRCoder générant PNG en Base64
+│   ├── QRCodeService.cs           # Service wrapper QRCoder générant PNG en Base64
+│   ├── TarificationService.cs     # Tarif = forfait + poids + distance
+│   └── GeolocalisationService.cs  # Distance, itinéraire routier (OSRM), zone desservie
 ├── ViewModels/
 │   └── ViewModels.cs              # LoginViewModel, RegisterViewModel, DashboardViewModel, SuiviColisViewModel
 ├── Views/
 │   ├── Shared/
 │   │   ├── _Layout.cshtml         # Layout Bootstrap 5, topbar, alertes TempData, scripts
 │   │   ├── _Sidebar.cshtml        # Menu latéral dynamique filtré par rôle RBAC (Bleu ciel)
+│   │   ├── _SuiviGps.cshtml       # Carte de suivi en direct + partage de position du livreur
+│   │   ├── _CarteScripts.cshtml   # Leaflet + réglages des cartes + carte.js
 │   │   └── _ValidationScriptsPartial.cshtml
 │   ├── Account/                   # Login.cshtml, Register.cshtml, Users.cshtml, AccessDenied.cshtml
 │   ├── Dashboard/                 # Index.cshtml (KPI cards, stepper, actions rapides)
@@ -196,10 +214,13 @@ BabaTrans/
 │   ├── Commande/                  # Index.cshtml, Create.cshtml, Edit.cshtml, Details.cshtml
 │   ├── Colis/                     # Index.cshtml, Create.cshtml, Details.cshtml (Timbre), Suivi.cshtml
 │   ├── Livraison/                 # Index.cshtml, Create.cshtml, Details.cshtml (Scans & Confirmation)
-│   ├── Transport/                 # Moyens.cshtml, CreateMoyen.cshtml, EditMoyen.cshtml, Trajets.cshtml...
+│   ├── Transport/                 # Moyens.cshtml, CreateMoyen.cshtml, EditMoyen.cshtml
+│   ├── SuiviGps/                  # Carte.cshtml (livreurs en route, en direct)
 │   └── Rapport/                   # Index.cshtml (Rapports complets imprimables)
 ├── wwwroot/
 │   ├── css/site.css               # Feuille de style complète Blanc & Bleu Ciel
+│   ├── js/carte.js                # Cartes, choix du point de livraison, estimation, suivi et partage GPS
+│   ├── lib/leaflet/               # Leaflet 1.9.4 (cartes OpenStreetMap)
 │   └── lib/bootstrap/             # Bootstrap 5 assets locaux
 ├── appsettings.json               # Chaîne de connexion SQL Server
 └── Program.cs                     # Injection de dépendances, middleware, auth cookie, startup

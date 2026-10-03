@@ -1,24 +1,36 @@
-using BabaTrans.Helpers;
 using BabaTrans.Models;
 
 namespace BabaTrans.Services
 {
     /// <param name="PoidsReel">Vrai si le poids vient des colis pesés, faux s'il s'agit du poids estimé de la commande.</param>
+    /// <param name="DistanceKm">Distance de livraison ; absente pour une commande qui n'a pas encore été géolocalisée.</param>
+    /// <param name="MinimumApplique">Vrai si la somme des parts était inférieure au minimum facturable.</param>
     public sealed record EstimationTarifaire(
         decimal PoidsTotalKg,
         bool PoidsReel,
+        decimal? DistanceKm,
         decimal ForfaitBase,
-        decimal SupplementDestination,
         decimal TarifPoids,
-        decimal Total);
+        decimal TarifDistance,
+        decimal Total,
+        bool MinimumApplique)
+    {
+        /// <summary>Écart entre le total et la somme des parts (minimum facturable ou arrondi au millier) : affiché pour que le détail tombe juste.</summary>
+        public decimal Ajustement => Total - (ForfaitBase + TarifPoids + TarifDistance);
+
+        public string LibelleAjustement => MinimumApplique ? "Minimum facturable" : "Arrondi au millier";
+    }
 
     public sealed record ParametresTarification(
         decimal ForfaitBase,
         decimal TarifParKg,
-        decimal SupplementDestinationParDefaut,
-        decimal MinimumFacturable,
-        IReadOnlyDictionary<string, decimal> SupplementsDestination);
+        decimal TarifParKm,
+        decimal MinimumFacturable);
 
+    /// <summary>
+    /// Tarif d'une livraison = forfait + poids × tarif au kg + distance × tarif au km,
+    /// avec un minimum facturable, arrondi au millier de francs supérieur.
+    /// </summary>
     public class TarificationService
     {
         private readonly IConfiguration _configuration;
@@ -32,24 +44,11 @@ namespace BabaTrans.Services
         /// <summary>Lit les paramètres une seule fois par requête (le service est enregistré en Scoped).</summary>
         public ParametresTarification LireParametres()
         {
-            if (_parametres != null)
-                return _parametres;
-
-            var supplements = _configuration.GetSection("Tarification:Destinations")
-                .GetChildren()
-                .Where(item => decimal.TryParse(item.Value, System.Globalization.NumberStyles.Number,
-                    System.Globalization.CultureInfo.InvariantCulture, out _))
-                .ToDictionary(
-                    item => item.Key,
-                    item => decimal.Parse(item.Value!, System.Globalization.CultureInfo.InvariantCulture));
-
-            _parametres = new ParametresTarification(
+            return _parametres ??= new ParametresTarification(
                 LireDecimal("Tarification:ForfaitBase", 2000m),
                 LireDecimal("Tarification:TarifParKg", 150m),
-                LireDecimal("Tarification:SupplementDestinationParDefaut", 3000m),
-                LireDecimal("Tarification:MinimumFacturable", 5000m),
-                supplements);
-            return _parametres;
+                LireDecimal("Tarification:TarifParKm", 100m),
+                LireDecimal("Tarification:MinimumFacturable", 5000m));
         }
 
         /// <summary>
@@ -58,33 +57,29 @@ namespace BabaTrans.Services
         /// </summary>
         public EstimationTarifaire Calculer(Commande commande)
         {
-            var parametres = LireParametres();
             var poidsColis = (decimal)(commande.Colis?.Sum(c => c.Poids) ?? 0);
             var poidsReel = poidsColis > 0;
             var poidsTotal = poidsReel ? poidsColis : commande.PoidsEstimeKg ?? 0m;
-
-            var supplementDestination = LireSupplementDestination(commande.VilleDestination);
-            var tarifPoids = poidsTotal * parametres.TarifParKg;
-            var total = Math.Max(parametres.MinimumFacturable, parametres.ForfaitBase + tarifPoids + supplementDestination);
-
-            return new EstimationTarifaire(
-                Math.Round(poidsTotal, 2),
-                poidsReel,
-                parametres.ForfaitBase,
-                supplementDestination,
-                tarifPoids,
-                ArrondirAuMillier(total));
+            return Calculer(poidsTotal, poidsReel, commande.DistanceKm);
         }
 
-        private decimal LireSupplementDestination(string? destination)
+        public EstimationTarifaire Calculer(decimal poidsKg, bool poidsReel, decimal? distanceKm)
         {
             var parametres = LireParametres();
-            foreach (var (ville, supplement) in parametres.SupplementsDestination)
-            {
-                if (StatutHelper.MemeVille(ville, destination))
-                    return supplement;
-            }
-            return parametres.SupplementDestinationParDefaut;
+            var tarifPoids = Math.Round(poidsKg * parametres.TarifParKg);
+            var tarifDistance = Math.Round((distanceKm ?? 0m) * parametres.TarifParKm);
+            var sousTotal = parametres.ForfaitBase + tarifPoids + tarifDistance;
+            var total = Math.Max(parametres.MinimumFacturable, sousTotal);
+
+            return new EstimationTarifaire(
+                Math.Round(poidsKg, 2),
+                poidsReel,
+                distanceKm,
+                parametres.ForfaitBase,
+                tarifPoids,
+                tarifDistance,
+                ArrondirAuMillier(total),
+                MinimumApplique: sousTotal < parametres.MinimumFacturable);
         }
 
         private decimal LireDecimal(string cle, decimal valeurParDefaut)

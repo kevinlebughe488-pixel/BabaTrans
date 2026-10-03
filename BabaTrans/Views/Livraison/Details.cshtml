@@ -4,6 +4,9 @@
     var enAttente = Model.Statut == StatutLivraison.EnAttente;
     var enCours = Model.Statut == StatutLivraison.EnCours;
     var commande = Model.Colis?.Commande;
+    // Le départ est le supermarché quand il était géolocalisé à la commande, sinon le dépôt.
+    var departDuSupermarche = commande?.Client?.Latitude != null
+        && commande.Client.Latitude == commande.LatitudeDepart && commande.Client.Longitude == commande.LongitudeDepart;
 }
 
 <div class="bt-page-header">
@@ -45,7 +48,7 @@
                 <div class="bt-panel text-center h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="fw-bold text-heading mb-1"><i class="bi bi-upc-scan text-warning me-1"></i> 1. Scan départ</div>
-                        <p class="text-muted small mb-2">Prise en charge au dépôt BABA-Trans.</p>
+                        <p class="text-muted small mb-2">@(departDuSupermarche ? $"Prise en charge chez {commande!.Client!.NomSupermarche}." : "Prise en charge au dépôt BABA-Trans.")</p>
                         @if (Model.DateDepart.HasValue)
                         {
                             <span class="bt-badge bt-badge-accent mb-2">
@@ -69,7 +72,7 @@
                 <div class="bt-panel text-center h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="fw-bold text-heading mb-1"><i class="bi bi-geo-alt text-primary me-1"></i> 2. Scan arrivée</div>
-                        <p class="text-muted small mb-2">Arrivée dans la ville de destination.</p>
+                        <p class="text-muted small mb-2">Arrivée à destination.</p>
                         @if (Model.DateArrivee.HasValue)
                         {
                             <span class="bt-badge bt-badge-accent mb-2">
@@ -112,6 +115,9 @@
         </div>
     </div>
 </div>
+
+<!-- Suivi GPS du livreur en temps réel -->
+<partial name="_SuiviGps" model="Model" />
 
 <div class="row g-4">
     <!-- Colis, timbre et adresse de livraison -->
@@ -303,4 +309,8 @@
             </div>
         </div>
     </div>
+}
+
+@section Scripts {
+    <partial name="_CarteScripts" />
 }

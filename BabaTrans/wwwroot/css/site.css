@@ -1117,6 +1117,194 @@ select.bt-form-control {
     font-weight: 500;
 }
 
+/* ===================== CARTES & SUIVI GPS ===================== */
+.bt-map {
+    position: relative;
+    z-index: 0; /* les calques de la carte restent sous la barre supérieure et les menus */
+    height: 340px;
+    border: 1px solid var(--bt-border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #e2e8f0;
+}
+
+.bt-map-lg {
+    height: 420px;
+}
+
+.bt-map-flotte {
+    height: calc(100vh - 260px);
+    min-height: 420px;
+}
+
+.bt-map-cadre {
+    position: relative;
+}
+
+.bt-map-recentrer {
+    position: absolute;
+    z-index: 1;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+.bt-map-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.bt-map-toolbar .input-group {
+    flex: 1 1 260px;
+}
+
+.bt-map-resultats {
+    margin-bottom: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--bt-bg-card);
+    border: 1px solid var(--bt-border);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.bt-map-resultat {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--bt-border-light);
+    background: none;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--bt-text);
+}
+
+.bt-map-resultat:last-child {
+    border-bottom: 0;
+}
+
+button.bt-map-resultat:hover {
+    background: var(--bt-sky-ultra-light);
+    color: var(--bt-primary);
+}
+
+.bt-map-icone {
+    background: none;
+    border: 0;
+}
+
+/* Repère en forme de goutte ; le livreur est un rond qui « pulse » tant que son GPS est actif */
+.bt-map-pin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 3px solid #ffffff;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    color: #ffffff;
+    font-size: 1rem;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+}
+
+.bt-map-pin i {
+    transform: rotate(45deg);
+}
+
+.bt-map-pin-destination { background: var(--bt-danger); }
+.bt-map-pin-depart { background: var(--bt-accent); }
+.bt-map-pin-depot { background: var(--bt-primary-dark); }
+
+.bt-map-pin-livreur {
+    border-radius: 50%;
+    transform: none;
+    background: var(--bt-primary);
+    animation: bt-gps-pulse 2s infinite;
+}
+
+.bt-map-pin-livreur i {
+    transform: none;
+}
+
+.bt-map-pin-inactif {
+    background: #94a3b8;
+    animation: none;
+}
+
+@keyframes bt-gps-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.55); }
+    70% { box-shadow: 0 0 0 14px rgba(13, 110, 253, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bt-map-pin-livreur { animation: none; }
+}
+
+.bt-gps-etat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--bt-text-heading);
+}
+
+.bt-gps-etat::before {
+    content: '';
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #94a3b8;
+}
+
+.bt-gps-etat[data-etat="actif"]::before {
+    background: var(--bt-accent);
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+}
+
+.bt-gps-etat[data-etat="perdu"]::before { background: var(--bt-warning); }
+.bt-gps-etat[data-etat="termine"]::before { background: var(--bt-primary); }
+
+.bt-partage-actif {
+    border-color: var(--bt-accent) !important;
+    background: #f0fdf4 !important;
+}
+
+/* Texte du panneau d'estimation : le montant reste à droite tant qu'il y a la place */
+.bt-estimation-texte {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.bt-chargement {
+    opacity: 0.55;
+    transition: opacity 0.2s;
+}
+
+.bt-flotte-liste {
+    max-height: calc(100vh - 330px);
+    min-height: 200px;
+    overflow-y: auto;
+}
+
+.bt-flotte-item {
+    display: block;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bt-border-light);
+    color: var(--bt-text);
+    text-decoration: none;
+}
+
+.bt-flotte-item:hover {
+    background: var(--bt-sky-ultra-light);
+}
+
 /* ===================== IMPRESSION ===================== */
 @media print {
     .bt-sidebar,
@@ -1140,6 +1328,10 @@ select.bt-form-control {
     .bt-stat-card {
         box-shadow: none !important;
         break-inside: avoid;
+    }
+    .bt-map-toolbar,
+    .bt-map-recentrer {
+        display: none !important;
     }
     .print-full {
         flex: 0 0 100% !important;

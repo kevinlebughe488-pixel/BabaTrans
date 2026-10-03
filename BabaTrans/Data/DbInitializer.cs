@@ -24,6 +24,14 @@ namespace BabaTrans.Data
                 ("Commandes", "QuartierDestination", "nvarchar(150) NULL"),
                 ("Commandes", "ContactDestination", "nvarchar(150) NULL"),
                 ("Commandes", "TelephoneDestination", "nvarchar(50) NULL"),
+                ("Commandes", "LatitudeDestination", "float NULL"),
+                ("Commandes", "LongitudeDestination", "float NULL"),
+                ("Commandes", "LatitudeDepart", "float NULL"),
+                ("Commandes", "LongitudeDepart", "float NULL"),
+                ("Commandes", "DistanceKm", "decimal(10,2) NULL"),
+                ("Commandes", "DureeEstimeeMinutes", "int NULL"),
+                ("Clients", "Latitude", "float NULL"),
+                ("Clients", "Longitude", "float NULL"),
             };
 
             foreach (var (table, colonne, type) in colonnes)
@@ -32,7 +40,83 @@ namespace BabaTrans.Data
                         + "ALTER TABLE [" + table + "] ADD [" + colonne + "] " + type + ";";
                 await context.Database.ExecuteSqlRawAsync(sql);
             }
+
+            // Positions GPS des livreurs (même structure que celle créée par EnsureCreated sur une base neuve).
+            await context.Database.ExecuteSqlRawAsync(@"
+IF OBJECT_ID(N'[PositionsLivreur]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [PositionsLivreur] (
+        [Id] int NOT NULL IDENTITY,
+        [Latitude] float NOT NULL,
+        [Longitude] float NOT NULL,
+        [PrecisionMetres] float NULL,
+        [VitesseKmh] float NULL,
+        [Cap] float NULL,
+        [DateEnregistrement] datetime2 NOT NULL,
+        [LivraisonId] int NOT NULL,
+        CONSTRAINT [PK_PositionsLivreur] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_PositionsLivreur_Livraisons_LivraisonId] FOREIGN KEY ([LivraisonId]) REFERENCES [Livraisons] ([Id]) ON DELETE CASCADE
+    );
+    CREATE INDEX [IX_PositionsLivreur_LivraisonId_DateEnregistrement] ON [PositionsLivreur] ([LivraisonId], [DateEnregistrement]);
+END");
+
+            // Le module « Trajets inter-villes » a été retiré : l'ancienne table Trajets et la colonne Commandes.TrajetId
+            // ne sont plus utilisées par l'application. Elles sont laissées en place pour ne perdre aucune donnée.
         }
+
+        /// <summary>
+        /// Géolocalise les données créées avant l'ajout des cartes : supermarchés de démonstration
+        /// et commandes dont la ville de destination est connue. Aucun appel réseau : distance estimée.
+        /// </summary>
+        private static async Task GeolocaliserDonneesExistantesAsync(BabaTransContext context, GeolocalisationService geolocalisation)
+        {
+            foreach (var client in await context.Clients.Where(c => c.Latitude == null).ToListAsync())
+            {
+                if (EmplacementsSupermarchesDemo.TryGetValue(client.NomSupermarche, out var point))
+                {
+                    client.Latitude = point.Latitude;
+                    client.Longitude = point.Longitude;
+                }
+            }
+            await context.SaveChangesAsync();
+
+            var commandes = await context.Commandes
+                .Include(c => c.Client)
+                .Where(c => c.LatitudeDestination == null || c.DistanceKm == null)
+                .ToListAsync();
+            foreach (var commande in commandes)
+            {
+                if (commande.LatitudeDestination is null || commande.LongitudeDestination is null)
+                {
+                    var centreVille = geolocalisation.CoordonneesVille(commande.VilleDestination);
+                    if (centreVille is null)
+                        continue;
+                    commande.LatitudeDestination = centreVille.Value.Latitude;
+                    commande.LongitudeDestination = centreVille.Value.Longitude;
+                }
+
+                DefinirItineraireEstime(commande, commande.Client, geolocalisation);
+            }
+            await context.SaveChangesAsync();
+        }
+
+        private static void DefinirItineraireEstime(Commande commande, Client? client, GeolocalisationService geolocalisation)
+        {
+            var depart = geolocalisation.PointDeDepart(client);
+            var itineraire = geolocalisation.ItineraireEstime(depart.Point,
+                new PointGps(commande.LatitudeDestination!.Value, commande.LongitudeDestination!.Value));
+            commande.LatitudeDepart = depart.Point.Latitude;
+            commande.LongitudeDepart = depart.Point.Longitude;
+            commande.DistanceKm = itineraire.DistanceKm;
+            commande.DureeEstimeeMinutes = itineraire.DureeMinutes;
+        }
+
+        private static readonly Dictionary<string, PointGps> EmplacementsSupermarchesDemo = new()
+        {
+            ["Kin Marché - Gombe"] = new PointGps(-4.3050, 15.3070),
+            ["SK Hypermarket - Lubumbashi"] = new PointGps(-11.6600, 27.4790),
+            ["City Market - Matadi"] = new PointGps(-5.8200, 13.4560),
+        };
 
         public static async Task SeedAsync(IServiceProvider serviceProvider)
         {
@@ -40,6 +124,7 @@ namespace BabaTrans.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<Utilisateur>>();
             var context = serviceProvider.GetRequiredService<BabaTransContext>();
             var qrService = serviceProvider.GetRequiredService<QRCodeService>();
+            var geolocalisation = serviceProvider.GetRequiredService<GeolocalisationService>();
 
             await MettreAJourSchemaAsync(context);
 
@@ -199,7 +284,9 @@ namespace BabaTrans.Data
                     Adresse = "Avenue de la Nation n°12, Gombe, Kinshasa",
                     Telephone = "+243 81 555 0101",
                     Email = "client@kinmarche.cd",
-                    PersonneContact = "Marc Ilunga (Directeur Achat)"
+                    PersonneContact = "Marc Ilunga (Directeur Achat)",
+                    Latitude = EmplacementsSupermarchesDemo["Kin Marché - Gombe"].Latitude,
+                    Longitude = EmplacementsSupermarchesDemo["Kin Marché - Gombe"].Longitude
                 };
                 var cl2 = new Client
                 {
@@ -207,7 +294,9 @@ namespace BabaTrans.Data
                     Adresse = "Chaussée M'siri n°450, Lubumbashi",
                     Telephone = "+243 99 777 0202",
                     Email = "logistique@sk-lubum.cd",
-                    PersonneContact = "Sarah Kabasele"
+                    PersonneContact = "Sarah Kabasele",
+                    Latitude = EmplacementsSupermarchesDemo["SK Hypermarket - Lubumbashi"].Latitude,
+                    Longitude = EmplacementsSupermarchesDemo["SK Hypermarket - Lubumbashi"].Longitude
                 };
                 var cl3 = new Client
                 {
@@ -215,50 +304,24 @@ namespace BabaTrans.Data
                     Adresse = "Boulevard du Port, Ville Basse, Matadi",
                     Telephone = "+243 82 333 0303",
                     Email = "contact@citymarket-matadi.cd",
-                    PersonneContact = "David Mbaya"
+                    PersonneContact = "David Mbaya",
+                    Latitude = EmplacementsSupermarchesDemo["City Market - Matadi"].Latitude,
+                    Longitude = EmplacementsSupermarchesDemo["City Market - Matadi"].Longitude
                 };
 
                 await context.Clients.AddRangeAsync(cl1, cl2, cl3);
                 await context.SaveChangesAsync();
 
-                // 7. Trajets inter-villes
+                // 7. Véhicule de la livraison de démonstration
                 var camion = await context.MoyensTransport.FirstOrDefaultAsync(m => m.Type == "Camion");
-                var van = await context.MoyensTransport.FirstOrDefaultAsync(m => m.Type == "Camionnette");
-
-                var t1 = new Trajet
-                {
-                    VilleDepart = "Kinshasa",
-                    VilleArrivee = "Matadi",
-                    DistanceKm = 352,
-                    DureeEstimeeHeures = 6.5,
-                    MoyenTransportId = camion?.Id
-                };
-                var t2 = new Trajet
-                {
-                    VilleDepart = "Kinshasa",
-                    VilleArrivee = "Lubumbashi",
-                    DistanceKm = 2280,
-                    DureeEstimeeHeures = 48.0,
-                    MoyenTransportId = camion?.Id
-                };
-                var t3 = new Trajet
-                {
-                    VilleDepart = "Kinshasa",
-                    VilleArrivee = "Goma",
-                    DistanceKm = 1950,
-                    DureeEstimeeHeures = 36.0,
-                    MoyenTransportId = van?.Id
-                };
-
-                await context.Trajets.AddRangeAsync(t1, t2, t3);
-                await context.SaveChangesAsync();
 
                 // 8. Commande de démonstration
                 var cmd1 = new Commande
                 {
                     ClientId = cl1.Id,
-                    TrajetId = t1.Id,
                     VilleDestination = "Matadi",
+                    LatitudeDestination = EmplacementsSupermarchesDemo["City Market - Matadi"].Latitude,
+                    LongitudeDestination = EmplacementsSupermarchesDemo["City Market - Matadi"].Longitude,
                     PoidsEstimeKg = 150m,
                     AdresseDestination = "Boulevard du Port, Ville Basse",
                     ContactDestination = "David Mbaya (City Market)",
@@ -267,6 +330,7 @@ namespace BabaTrans.Data
                     DateCommande = DateTime.Now.AddDays(-2),
                     Statut = StatutCommande.EnCours
                 };
+                DefinirItineraireEstime(cmd1, cl1, geolocalisation);
                 await context.Commandes.AddAsync(cmd1);
                 await context.SaveChangesAsync();
 
@@ -309,6 +373,20 @@ namespace BabaTrans.Data
                 };
                 await context.Livraisons.AddAsync(livraison);
 
+                // 12. Dernières positions GPS remontées par le téléphone du livreur sur la RN1
+                var etapes = new[] { (-4.3980, 15.2600), (-4.5900, 15.1700), (-5.1300, 15.0700), (-5.2500, 14.8650) };
+                for (var i = 0; i < etapes.Length; i++)
+                {
+                    livraison.Positions.Add(new PositionLivreur
+                    {
+                        Latitude = etapes[i].Item1,
+                        Longitude = etapes[i].Item2,
+                        PrecisionMetres = 15,
+                        VitesseKmh = 45,
+                        DateEnregistrement = livraison.DateDepart.Value.AddHours(i + 1)
+                    });
+                }
+
                 await context.SaveChangesAsync();
             }
 
@@ -338,6 +416,8 @@ namespace BabaTrans.Data
 
                 await context.SaveChangesAsync();
             }
+
+            await GeolocaliserDonneesExistantesAsync(context, geolocalisation);
         }
     }
 }
