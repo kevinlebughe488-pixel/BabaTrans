@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - BABA-Trans Logistics</title>
-    
+
     <!-- Google Fonts Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <!-- Bootstrap 5 CSS -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <!-- Bootstrap Icons -->
@@ -26,35 +26,30 @@
         <div class="bt-main">
             <!-- Top Navigation Bar -->
             <header class="bt-topbar">
-                <div class="d-flex align-items-center gap-3">
-                    <button class="btn btn-outline-secondary d-lg-none" type="button" id="sidebarToggle">
+                <div class="d-flex align-items-center gap-3 overflow-hidden">
+                    <button class="bt-btn bt-btn-outline bt-btn-sm d-lg-none" type="button" id="sidebarToggle" aria-label="Ouvrir le menu">
                         <i class="bi bi-list fs-5"></i>
                     </button>
-                    <div>
-                        <h1 class="page-title m-0 h5">@ViewData["Title"]</h1>
-                    </div>
+                    <h1 class="page-title m-0 h5 text-truncate">@ViewData["Title"]</h1>
                 </div>
 
                 <div class="topbar-actions">
-                    @if (!User.IsInRole("Client"))
-                    {
-                        <a asp-controller="Colis" asp-action="Suivi" class="bt-btn bt-btn-outline bt-btn-sm d-none d-sm-inline-flex">
-                            <i class="bi bi-upc-scan"></i> Suivi rapide
-                        </a>
-                    }
+                    <a asp-controller="Colis" asp-action="Suivi" class="bt-btn bt-btn-outline bt-btn-sm d-none d-sm-inline-flex">
+                        <i class="bi bi-upc-scan"></i> Suivi rapide
+                    </a>
 
                     <div class="dropdown">
                         <button class="bt-btn bt-btn-outline bt-btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle"></i> @User.Identity?.Name
+                            <i class="bi bi-person-circle"></i> <span class="d-none d-md-inline">@User.NomComplet()</span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-secondary-subtle">
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
                             <li><h6 class="dropdown-header text-uppercase">Connecté en tant que</h6></li>
-                            <li><span class="dropdown-item-text fw-bold text-primary">@User.Identity?.Name</span></li>
+                            <li><span class="dropdown-item-text fw-bold text-heading">@User.NomComplet()</span></li>
+                            <li><span class="dropdown-item-text small text-muted">@User.Identity?.Name · @User.RolePrincipal()</span></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form asp-controller="Account" asp-action="Logout" method="post" class="px-2">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-danger w-100">
+                                    <button type="submit" class="bt-btn bt-btn-danger bt-btn-sm w-100 justify-content-center">
                                         <i class="bi bi-power"></i> Se déconnecter
                                     </button>
                                 </form>
@@ -66,32 +61,32 @@
 
             <!-- Main Content Area -->
             <main class="bt-content">
-                @if (TempData["Success"] != null)
-                {
-                    <div class="bt-alert bt-alert-success alert-dismissible fade show" role="alert">
-                        <i class="bi bi-check-circle-fill fs-5"></i>
-                        <div class="flex-grow-1">@TempData["Success"]</div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
-                @if (TempData["Error"] != null)
-                {
-                    <div class="bt-alert bt-alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-                        <div class="flex-grow-1">@TempData["Error"]</div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
+                <partial name="_Alertes" />
                 @RenderBody()
             </main>
         </div>
     }
+    else if (ViewContext.RouteData.Values["controller"]?.ToString() == "Account")
+    {
+        <!-- Page de connexion : plein écran, sans en-tête -->
+        <main>
+            @RenderBody()
+        </main>
+    }
     else
     {
-        <!-- Mode non authentifié (Login / Suivi public) -->
-        <main>
+        <!-- Pages publiques (suivi de colis sans connexion) -->
+        <header class="bt-public-header">
+            <a class="brand" asp-controller="Colis" asp-action="Suivi">
+                <span class="brand-icon"><i class="bi bi-truck"></i></span>
+                <span>BABA-TRANS</span>
+            </a>
+            <a asp-controller="Account" asp-action="Login" class="bt-btn bt-btn-outline bt-btn-sm">
+                <i class="bi bi-box-arrow-in-right"></i> Se connecter
+            </a>
+        </header>
+        <main class="bt-public-content">
+            <partial name="_Alertes" />
             @RenderBody()
         </main>
     }
@@ -100,22 +95,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    
-    <script>
-        // Toggle mobile sidebar
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebarMenu = document.getElementById('sidebarMenu');
-        if (sidebarToggle && sidebarMenu) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebarMenu.classList.toggle('show');
-            });
-            document.addEventListener('click', (e) => {
-                if (!sidebarMenu.contains(e.target) && !sidebarToggle.contains(e.target) && sidebarMenu.classList.contains('show')) {
-                    sidebarMenu.classList.remove('show');
-                }
-            });
-        }
-    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

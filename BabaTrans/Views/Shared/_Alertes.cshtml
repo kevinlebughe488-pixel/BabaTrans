@@ -1,0 +1,18 @@
+@* Messages de confirmation / d'erreur transmis par les contrôleurs via TempData *@
+@if (TempData["Success"] != null)
+{
+    <div class="bt-alert bt-alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div class="flex-grow-1">@TempData["Success"]</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="bt-alert bt-alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div class="flex-grow-1">@TempData["Error"]</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+    </div>
+}

@@ -1,6 +1,9 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using BabaTrans.Data;
+using BabaTrans.Helpers;
 using BabaTrans.Models;
 using BabaTrans.Services;
 
@@ -22,7 +25,14 @@ builder.Services.AddIdentity<Utilisateur, IdentityRole>(options =>
     options.SignIn.RequireConfirmedEmail = false;
 })
 .AddEntityFrameworkStores<BabaTransContext>()
+.AddClaimsPrincipalFactory<BabaTransClaimsPrincipalFactory>()
 .AddDefaultTokenProviders();
+
+// Revalide le cookie toutes les 5 minutes : un compte désactivé est déconnecté rapidement.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(5);
+});
 
 // Configuration des cookies d'authentification
 builder.Services.ConfigureApplicationCookie(options =>
@@ -37,9 +47,19 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Enregistrer les services
 builder.Services.AddScoped<QRCodeService>();
 builder.Services.AddScoped<TarificationService>();
+builder.Services.AddScoped<CompteClientService>();
 
-// Ajouter MVC
-builder.Services.AddControllersWithViews();
+// Ajouter MVC, avec les messages d'erreur de saisie en français
+builder.Services.AddControllersWithViews(options =>
+{
+    var messages = options.ModelBindingMessageProvider;
+    messages.SetValueMustBeANumberAccessor(champ => $"Le champ « {champ} » doit être un nombre.");
+    messages.SetAttemptedValueIsInvalidAccessor((valeur, champ) => $"La valeur « {valeur} » n'est pas valide pour « {champ} ».");
+    messages.SetValueMustNotBeNullAccessor(champ => $"Le champ « {champ} » est obligatoire.");
+    messages.SetValueIsInvalidAccessor(valeur => $"La valeur « {valeur} » n'est pas valide.");
+    messages.SetMissingBindRequiredValueAccessor(champ => $"Le champ « {champ} » est obligatoire.");
+    messages.SetUnknownValueIsInvalidAccessor(champ => $"La valeur saisie pour « {champ} » n'est pas valide.");
+});
 
 var app = builder.Build();
 
@@ -57,6 +77,20 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
 }
 
+// Affichage en français (dates, séparateur de milliers) quelle que soit la langue de Windows.
+// Le séparateur décimal reste le point : c'est le format envoyé par les champs numériques des navigateurs.
+var cultureApplication = (CultureInfo)CultureInfo.GetCultureInfo("fr-FR").Clone();
+cultureApplication.NumberFormat.NumberDecimalSeparator = ".";
+cultureApplication.NumberFormat.CurrencyDecimalSeparator = ".";
+var optionsLocalisation = new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(cultureApplication),
+    SupportedCultures = new[] { cultureApplication },
+    SupportedUICultures = new[] { cultureApplication }
+};
+optionsLocalisation.RequestCultureProviders.Clear();
+app.UseRequestLocalization(optionsLocalisation);
+
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
@@ -64,6 +98,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Login}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();

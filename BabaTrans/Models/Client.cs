@@ -21,11 +21,13 @@ namespace BabaTrans.Models
 
         [Required(ErrorMessage = "Le téléphone est obligatoire.")]
         [Display(Name = "Téléphone")]
-        [Phone]
+        [Phone(ErrorMessage = "Le numéro de téléphone n'est pas valide.")]
+        [StringLength(30, ErrorMessage = "Le téléphone ne doit pas dépasser 30 caractères.")]
         public string Telephone { get; set; } = string.Empty;
 
         [Display(Name = "Email")]
-        [EmailAddress]
+        [EmailAddress(ErrorMessage = "L'adresse email n'est pas valide.")]
+        [StringLength(200)]
         public string? Email { get; set; }
 
         [Display(Name = "Personne de contact")]

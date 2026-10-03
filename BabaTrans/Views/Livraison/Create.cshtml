@@ -1,55 +1,67 @@
 @model BabaTrans.Models.Livraison
 @{
     ViewData["Title"] = "Affecter une Livraison";
+    var aucunColis = !((IEnumerable<SelectListItem>?)ViewBag.Colis ?? Enumerable.Empty<SelectListItem>()).Any();
 }
 
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="bt-card fade-in">
             <div class="bt-card-header">
-                <h5><i class="bi bi-person-badge text-primary me-2"></i>Affectation Colis & Livreur (Diagramme de Séquence)</h5>
+                <h5><i class="bi bi-person-badge text-primary me-2"></i>Affecter un colis à un livreur</h5>
                 <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
             </div>
             <div class="bt-card-body">
+                @if (aucunColis)
+                {
+                    <div class="bt-alert bt-alert-warning">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>
+                            Aucun colis n'est prêt à partir : tous les colis sont déjà affectés, partis ou rattachés à une commande clôturée.
+                            <a asp-controller="Colis" asp-action="Create" class="fw-semibold">Enregistrer un colis</a>
+                        </div>
+                    </div>
+                }
+
                 <form asp-action="Create" method="post">
-                    @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
 
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label asp-for="ColisId" class="bt-form-label">Colis à Expédier</label>
+                            <label asp-for="ColisId" class="bt-form-label">Colis à expédier</label>
                             <select asp-for="ColisId" class="bt-form-control" asp-items="ViewBag.Colis">
                                 <option value="">-- Sélectionnez un colis prêt --</option>
                             </select>
-                            <span asp-validation-for="ColisId" class="text-danger"></span>
+                            <span asp-validation-for="ColisId" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="LivreurId" class="bt-form-label">Livreur Assigné</label>
+                            <label asp-for="LivreurId" class="bt-form-label">Livreur responsable</label>
                             <select asp-for="LivreurId" class="bt-form-control" asp-items="ViewBag.Livreurs">
-                                <option value="">-- Sélectionnez le livreur responsable --</option>
+                                <option value="">-- Sélectionnez le livreur --</option>
                             </select>
-                            <span asp-validation-for="LivreurId" class="text-danger"></span>
+                            <span asp-validation-for="LivreurId" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="MoyenTransportId" class="bt-form-label"><i class="bi bi-truck me-1"></i>Moyen de Transport</label>
+                            <label asp-for="MoyenTransportId" class="bt-form-label">Véhicule</label>
                             <select asp-for="MoyenTransportId" class="bt-form-control" asp-items="ViewBag.MoyensTransport">
                                 <option value="">-- Sélectionnez le véhicule --</option>
                             </select>
-                            <span asp-validation-for="MoyenTransportId" class="text-danger"></span>
+                            <span asp-validation-for="MoyenTransportId" class="text-danger small"></span>
+                            <div class="bt-form-hint">La capacité du véhicule doit couvrir le poids du colis.</div>
                         </div>
 
                         <div class="col-md-12">
-                            <label asp-for="Commentaire" class="bt-form-label">Notes de livraison (Optionnel)</label>
-                            <textarea asp-for="Commentaire" class="bt-form-control" rows="2" placeholder="Précisions de contact pour la remise, heure souhaitée, etc."></textarea>
-                            <span asp-validation-for="Commentaire" class="text-danger"></span>
+                            <label asp-for="Commentaire" class="bt-form-label">Notes pour le livreur (optionnel)</label>
+                            <textarea asp-for="Commentaire" class="bt-form-control" rows="2" maxlength="500" placeholder="Contact pour la remise, heure souhaitée, précautions..."></textarea>
+                            <span asp-validation-for="Commentaire" class="text-danger small"></span>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
                         <a asp-action="Index" class="bt-btn bt-btn-outline">Annuler</a>
-                        <button type="submit" class="bt-btn bt-btn-primary">
+                        <button type="submit" class="bt-btn bt-btn-primary" @(aucunColis ? "disabled" : "")>
                             <i class="bi bi-check-circle"></i> Valider l'affectation
                         </button>
                     </div>

@@ -20,7 +20,7 @@ namespace BabaTrans.Models
 
         [Required(ErrorMessage = "La capacité est obligatoire.")]
         [Display(Name = "Capacité (kg)")]
-        [Range(1, 100000)]
+        [Range(1, 100000, ErrorMessage = "La capacité doit être comprise entre 1 et 100 000 kg.")]
         public double Capacite { get; set; }
 
         [Display(Name = "Disponible")]

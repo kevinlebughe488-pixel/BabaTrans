@@ -1,0 +1,38 @@
+@model BabaTrans.Models.MoyenTransport
+@* Champs communs aux formulaires d'ajout et de modification d'un véhicule *@
+
+<div class="bt-form-group">
+    <label asp-for="Type" class="bt-form-label">Type de véhicule</label>
+    <input asp-for="Type" class="bt-form-control" placeholder="Ex : Camion remorque, Van frigorifique, Moto" />
+    <span asp-validation-for="Type" class="text-danger small"></span>
+</div>
+
+<div class="bt-form-group">
+    <label asp-for="Immatriculation" class="bt-form-label"></label>
+    <input asp-for="Immatriculation" class="bt-form-control text-uppercase" placeholder="Ex : C-1234-KN" />
+    <span asp-validation-for="Immatriculation" class="text-danger small"></span>
+</div>
+
+<div class="bt-form-group">
+    <label asp-for="Capacite" class="bt-form-label">Capacité</label>
+    <div class="input-group">
+        <input asp-for="Capacite" class="bt-form-control" type="number" min="1" max="100000" step="1" placeholder="Ex : 5000" />
+        <span class="input-group-text">kg</span>
+    </div>
+    <span asp-validation-for="Capacite" class="text-danger small"></span>
+</div>
+
+<div class="bt-form-group">
+    <label asp-for="EstDisponible" class="bt-form-label">Disponibilité</label>
+    <select asp-for="EstDisponible" class="bt-form-control">
+        <option value="true">Disponible</option>
+        <option value="false">En maintenance / indisponible</option>
+    </select>
+    <div class="bt-form-hint">Un véhicule indisponible n'est plus proposé lors des affectations.</div>
+</div>
+
+<div class="bt-form-group">
+    <label asp-for="Description" class="bt-form-label"></label>
+    <textarea asp-for="Description" class="bt-form-control" rows="2" placeholder="Détails du véhicule"></textarea>
+    <span asp-validation-for="Description" class="text-danger small"></span>
+</div>

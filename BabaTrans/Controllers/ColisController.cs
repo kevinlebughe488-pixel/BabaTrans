@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BabaTrans.Data;
+using BabaTrans.Helpers;
 using BabaTrans.Models;
 using BabaTrans.Services;
 
@@ -14,24 +14,29 @@ namespace BabaTrans.Controllers
     {
         private readonly BabaTransContext _context;
         private readonly QRCodeService _qrCodeService;
-        private readonly UserManager<Utilisateur> _userManager;
+        private readonly CompteClientService _compteClient;
 
-        public ColisController(BabaTransContext context, QRCodeService qrCodeService, UserManager<Utilisateur> userManager)
+        public ColisController(BabaTransContext context, QRCodeService qrCodeService, CompteClientService compteClient)
         {
             _context = context;
             _qrCodeService = qrCodeService;
-            _userManager = userManager;
+            _compteClient = compteClient;
         }
 
         // GET: Colis
         [Authorize(Roles = "Administrateur,Agent")]
         public async Task<IActionResult> Index()
         {
+            // Les images QR ne sont plus chargées ici : la liste affiche une miniature servie par l'action QRImage.
             var colis = await _context.Colis
                 .Include(c => c.Commande).ThenInclude(cmd => cmd!.Client)
-                .Include(c => c.TimbreQRCode)
                 .OrderByDescending(c => c.DateEnregistrement)
                 .ToListAsync();
+
+            ViewBag.ColisAvecTimbre = (await _context.TimbresQRCode
+                .Select(t => t.ColisId)
+                .ToListAsync()).ToHashSet();
+
             return View(colis);
         }
 
@@ -47,16 +52,39 @@ namespace BabaTrans.Controllers
                 .Include(c => c.Livraisons).ThenInclude(l => l.MoyenTransport)
                 .FirstOrDefaultAsync(c => c.Id == id);
             if (colis == null) return NotFound();
+
+            var livraisonActive = colis.Livraisons.Any(l =>
+                l.Statut == StatutLivraison.EnAttente || l.Statut == StatutLivraison.EnCours);
+            ViewBag.PeutAffecter = colis.Statut.EstAffectable()
+                && !livraisonActive
+                && colis.Commande != null
+                && colis.Commande.Statut.EstOuverte();
+
             return View(colis);
+        }
+
+        // GET: Colis/QRImage/5 : image PNG du timbre (miniatures de la liste, impression).
+        [Authorize(Roles = "Administrateur,Agent")]
+        [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
+        public async Task<IActionResult> QRImage(int id)
+        {
+            var imageBase64 = await _context.TimbresQRCode
+                .Where(t => t.ColisId == id)
+                .Select(t => t.ImageBase64)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrEmpty(imageBase64))
+                return NotFound();
+
+            return File(Convert.FromBase64String(imageBase64), "image/png");
         }
 
         // GET: Colis/Create
         [Authorize(Roles = "Administrateur,Agent")]
-        public IActionResult Create()
+        public async Task<IActionResult> Create(int? commandeId)
         {
-            ViewBag.Commandes = new SelectList(
-                _context.Commandes.Include(c => c.Client).Select(c => new { c.Id, Display = $"CMD-{c.Id} - {c.Client!.NomSupermarche}" }),
-                "Id", "Display");
+            // Pas de modèle : le champ poids reste vide (et non « 0 »), la commande est présélectionnée par la liste.
+            await PreparerListeCommandesAsync(commandeId);
             return View();
         }
 
@@ -66,83 +94,94 @@ namespace BabaTrans.Controllers
         [Authorize(Roles = "Administrateur,Agent")]
         public async Task<IActionResult> Create([Bind("Description,Poids,CommandeId")] Colis colis)
         {
+            var commande = await _context.Commandes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == colis.CommandeId);
+            if (commande == null)
+                ModelState.AddModelError(nameof(colis.CommandeId), "Sélectionnez une commande valide.");
+            else if (!commande.Statut.EstOuverte())
+                ModelState.AddModelError(nameof(colis.CommandeId),
+                    $"La commande CMD-{commande.Id} est {commande.Statut.Libelle().ToLowerInvariant()} : on ne peut plus y ajouter de colis.");
+
             if (ModelState.IsValid)
             {
-                // Générer le code de suivi unique
+                colis.Description = colis.Description.Trim();
                 colis.CodeSuivi = $"BT-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
                 colis.DateEnregistrement = DateTime.Now;
                 colis.Statut = StatutColis.Enregistre;
 
-                _context.Add(colis);
-                await _context.SaveChangesAsync();
-
-                // Générer le QR-Code automatiquement
-                var contenu = _qrCodeService.GenererContenuColis(colis.Id, colis.CodeSuivi, colis.Description);
-                var imageBase64 = _qrCodeService.GenererQRCode(contenu);
-
-                var timbre = new TimbreQRCode
+                // Transaction : le colis et son timbre QR sont créés ensemble ou pas du tout.
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    ColisId = colis.Id,
-                    Contenu = contenu,
-                    ImageBase64 = imageBase64,
-                    DateGeneration = DateTime.Now
-                };
-                _context.TimbresQRCode.Add(timbre);
+                    _context.Add(colis);
+                    await _context.SaveChangesAsync();
 
-                colis.Statut = StatutColis.QRCodeGenere;
-                await _context.SaveChangesAsync();
+                    // La date d'enregistrement (fixe) est signée pour que la signature reste stable.
+                    var contenu = _qrCodeService.GenererContenuColis(colis.Id, colis.CodeSuivi, colis.Description, colis.DateEnregistrement);
+                    _context.TimbresQRCode.Add(new TimbreQRCode
+                    {
+                        ColisId = colis.Id,
+                        Contenu = contenu,
+                        ImageBase64 = _qrCodeService.GenererQRCode(contenu),
+                        DateGeneration = DateTime.Now
+                    });
 
-                TempData["Success"] = $"Colis enregistré avec succès. Code de suivi : {colis.CodeSuivi}";
-                return RedirectToAction(nameof(Details), new { id = colis.Id });
+                    colis.Statut = StatutColis.QRCodeGenere;
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    TempData["Success"] = $"Colis enregistré avec succès. Code de suivi : {colis.CodeSuivi}";
+                    return RedirectToAction(nameof(Details), new { id = colis.Id });
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
-            ViewBag.Commandes = new SelectList(
-                _context.Commandes.Include(c => c.Client).Select(c => new { c.Id, Display = $"CMD-{c.Id} - {c.Client!.NomSupermarche}" }),
-                "Id", "Display", colis.CommandeId);
+
+            await PreparerListeCommandesAsync(colis.CommandeId);
             return View(colis);
         }
 
-        // GET: Colis/Suivi (Accès sécurisé)
+        // GET: Colis/Suivi
+        // Toute personne qui possède le code voit l'avancement du colis.
+        // Les détails (contenu, supermarché, livreur, timbre) sont réservés au personnel et au supermarché propriétaire.
         [AllowAnonymous]
         public async Task<IActionResult> Suivi(string? code)
         {
-            ViewModels.SuiviColisViewModel model = new() { CodeSuivi = code };
+            code = code?.Trim().ToUpperInvariant();
+            var model = new ViewModels.SuiviColisViewModel { CodeSuivi = code };
 
-            if (!string.IsNullOrEmpty(code))
+            if (string.IsNullOrEmpty(code))
+                return View(model);
+
+            model.Recherche = true;
+            var colis = await _context.Colis
+                .Include(c => c.Commande).ThenInclude(cmd => cmd!.Client)
+                .Include(c => c.TimbreQRCode)
+                .Include(c => c.Livraisons).ThenInclude(l => l.Livreur)
+                .Include(c => c.Livraisons).ThenInclude(l => l.MoyenTransport)
+                .FirstOrDefaultAsync(c => c.CodeSuivi == code);
+
+            if (colis == null)
+                return View(model);
+
+            if (User.EstPersonnel() || User.IsInRole("Livreur"))
             {
-                var colis = await _context.Colis
-                    .Include(c => c.Commande).ThenInclude(cmd => cmd!.Client)
-                    .Include(c => c.TimbreQRCode)
-                    .Include(c => c.Livraisons).ThenInclude(l => l.Livreur)
-                    .Include(c => c.Livraisons).ThenInclude(l => l.MoyenTransport)
-                    .FirstOrDefaultAsync(c => c.CodeSuivi == code);
-
-                if (colis == null)
-                {
-                    ModelState.AddModelError(string.Empty, "Aucun colis trouvé avec ce code.");
-                    model.Recherche = true;
-                    return View(model);
-                }
-
-                // Vérification de sécurité pour le rôle Client
-                if (User.IsInRole("Client"))
-                {
-                    var user = await _userManager.GetUserAsync(User);
-                    var email = user?.Email ?? User.Identity?.Name;
-                    var client = await _context.Clients
-                        .FirstOrDefaultAsync(c => c.Email == email);
-
-                    if (client == null || colis.Commande?.ClientId != client.Id)
-                    {
-                        return Forbid(); // Le client n'est pas propriétaire de ce colis
-                    }
-                }
-
-                if (colis.TimbreQRCode != null && !_qrCodeService.VerifierContenuColis(colis.TimbreQRCode.Contenu))
-                    colis.TimbreQRCode.ImageBase64 = null;
-
-                model.Recherche = true;
-                model.Colis = colis;
+                model.AccesComplet = true;
             }
+            else if (User.IsInRole("Client"))
+            {
+                var client = await _compteClient.GetClientConnecteAsync(User);
+                model.AccesComplet = client != null && colis.Commande?.ClientId == client.Id;
+            }
+
+            // Un timbre dont la signature ne correspond plus n'est pas affiché.
+            if (colis.TimbreQRCode != null && !_qrCodeService.VerifierContenuColis(colis.TimbreQRCode.Contenu))
+                colis.TimbreQRCode.ImageBase64 = null;
+
+            model.Colis = colis;
+            model.Livraisons = colis.Livraisons.OrderByDescending(l => l.Id).ToList();
             return View(model);
         }
 
@@ -158,27 +197,50 @@ namespace BabaTrans.Controllers
 
             if (colis == null) return NotFound();
 
-            if (colis.TimbreQRCode != null)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                _context.TimbresQRCode.Remove(colis.TimbreQRCode);
+                if (colis.TimbreQRCode != null)
+                    _context.TimbresQRCode.Remove(colis.TimbreQRCode);
+
+                var contenu = _qrCodeService.GenererContenuColis(colis.Id, colis.CodeSuivi ?? $"BT-{colis.Id}", colis.Description, colis.DateEnregistrement);
+                _context.TimbresQRCode.Add(new TimbreQRCode
+                {
+                    ColisId = colis.Id,
+                    Contenu = contenu,
+                    ImageBase64 = _qrCodeService.GenererQRCode(contenu),
+                    DateGeneration = DateTime.Now
+                });
+
+                // Régénérer le timbre ne doit pas faire reculer un colis déjà en route ou livré.
+                if (colis.Statut == StatutColis.Enregistre)
+                    colis.Statut = StatutColis.QRCodeGenere;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Success"] = "Timbre QR-Code généré avec succès.";
+                return RedirectToAction(nameof(Details), new { id });
             }
-
-            var contenu = _qrCodeService.GenererContenuColis(colis.Id, colis.CodeSuivi ?? $"BT-{colis.Id}", colis.Description);
-            var imageBase64 = _qrCodeService.GenererQRCode(contenu);
-
-            var timbre = new TimbreQRCode
+            catch (Exception)
             {
-                ColisId = colis.Id,
-                Contenu = contenu,
-                ImageBase64 = imageBase64,
-                DateGeneration = DateTime.Now
-            };
-            _context.TimbresQRCode.Add(timbre);
-            colis.Statut = StatutColis.QRCodeGenere;
-            await _context.SaveChangesAsync();
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
 
-            TempData["Success"] = "QR-Code régénéré avec succès.";
-            return RedirectToAction(nameof(Details), new { id });
+        /// <summary>Seules les commandes encore ouvertes (en attente ou en cours) peuvent recevoir un colis.</summary>
+        private async Task PreparerListeCommandesAsync(int? commandeId)
+        {
+            var commandes = await _context.Commandes
+                .Where(c => c.Statut == StatutCommande.EnAttente || c.Statut == StatutCommande.EnCours)
+                .OrderByDescending(c => c.DateCommande)
+                .Select(c => new { c.Id, NomSupermarche = c.Client!.NomSupermarche, c.VilleDestination })
+                .ToListAsync();
+
+            ViewBag.Commandes = new SelectList(
+                commandes.Select(c => new { c.Id, Display = $"CMD-{c.Id} · {c.NomSupermarche} → {c.VilleDestination}" }),
+                "Id", "Display", commandeId);
         }
     }
 }

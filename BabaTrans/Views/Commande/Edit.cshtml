@@ -7,76 +7,58 @@
     <div class="col-lg-8">
         <div class="bt-card fade-in">
             <div class="bt-card-header">
-                <h5><i class="bi bi-pencil-square text-primary me-2"></i>Modifier Commande #CMD-@Model.Id</h5>
-                <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
+                <h5><i class="bi bi-pencil-square text-primary me-2"></i>Modifier la commande CMD-@Model.Id</h5>
+                <a asp-action="Details" asp-route-id="@Model.Id" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
             </div>
             <div class="bt-card-body">
                 <form asp-action="Edit" method="post">
-                    @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="Id" />
-                    <input type="hidden" asp-for="DateCommande" />
                     <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
 
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label asp-for="ClientId" class="bt-form-label">Supermarché Client</label>
+                        <div class="col-md-8">
+                            <label asp-for="ClientId" class="bt-form-label">Supermarché client</label>
                             <select asp-for="ClientId" class="bt-form-control" asp-items="ViewBag.Clients"></select>
-                            <span asp-validation-for="ClientId" class="text-danger"></span>
+                            <span asp-validation-for="ClientId" class="text-danger small"></span>
                         </div>
 
-                        <div class="col-md-6">
-                            <label asp-for="Statut" class="bt-form-label">Statut de la Commande</label>
-                            <select asp-for="Statut" class="bt-form-control" asp-items="Html.GetEnumSelectList<BabaTrans.Models.StatutCommande>()"></select>
-                            <span asp-validation-for="Statut" class="text-danger"></span>
+                        <div class="col-md-4">
+                            <span class="bt-form-label">Statut</span>
+                            <div class="pt-2">
+                                <span class="bt-badge @Model.Statut.Badge()">@Model.Statut.Libelle()</span>
+                            </div>
+                            <div class="bt-form-hint">Mis à jour automatiquement par les scans.</div>
                         </div>
 
                         <div class="col-md-6">
                             <label asp-for="VilleDestination" class="bt-form-label"></label>
                             <input asp-for="VilleDestination" class="bt-form-control" />
-                            <span asp-validation-for="VilleDestination" class="text-danger"></span>
+                            <span asp-validation-for="VilleDestination" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="TrajetId" class="bt-form-label">Trajet Affecté</label>
-                            <select asp-for="TrajetId" class="bt-form-control" asp-items="ViewBag.Trajets">
-                                <option value="">-- Aucun trajet affecté --</option>
-                            </select>
-                            <span asp-validation-for="TrajetId" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label asp-for="AdresseDestination" class="bt-form-label"></label>
-                            <input asp-for="AdresseDestination" class="bt-form-control" />
-                            <span asp-validation-for="AdresseDestination" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label asp-for="QuartierDestination" class="bt-form-label"></label>
-                            <input asp-for="QuartierDestination" class="bt-form-control" />
-                            <span asp-validation-for="QuartierDestination" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label asp-for="ContactDestination" class="bt-form-label"></label>
-                            <input asp-for="ContactDestination" class="bt-form-control" />
-                            <span asp-validation-for="ContactDestination" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label asp-for="TelephoneDestination" class="bt-form-label"></label>
-                            <input asp-for="TelephoneDestination" class="bt-form-control" />
-                            <span asp-validation-for="TelephoneDestination" class="text-danger"></span>
+                            <label asp-for="PoidsEstimeKg" class="bt-form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="PoidsEstimeKg" class="bt-form-control" type="number" min="0.1" max="10000" step="0.1" />
+                                <span class="input-group-text">kg</span>
+                            </div>
+                            <span asp-validation-for="PoidsEstimeKg" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-12">
-                            <label asp-for="Description" class="bt-form-label"></label>
-                            <textarea asp-for="Description" class="bt-form-control" rows="3"></textarea>
-                            <span asp-validation-for="Description" class="text-danger"></span>
+                            <label asp-for="TrajetId" class="bt-form-label">Trajet affecté</label>
+                            <select asp-for="TrajetId" class="bt-form-control" asp-items="ViewBag.Trajets">
+                                <option value="">-- Aucun trajet affecté --</option>
+                            </select>
+                            <span asp-validation-for="TrajetId" class="text-danger small"></span>
+                            <div class="bt-form-hint">Le trajet doit arriver dans la ville de destination.</div>
                         </div>
+
+                        <partial name="_ChampsDestination" model="Model" />
                     </div>
 
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
-                        <a asp-action="Index" class="bt-btn bt-btn-outline">Annuler</a>
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="bt-btn bt-btn-outline">Annuler</a>
                         <button type="submit" class="bt-btn bt-btn-primary">
                             <i class="bi bi-save"></i> Enregistrer
                         </button>

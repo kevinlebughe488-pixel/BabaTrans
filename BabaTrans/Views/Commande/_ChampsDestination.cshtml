@@ -1,0 +1,32 @@
+@model BabaTrans.Models.Commande
+@* Champs de destination communs aux formulaires de création et de modification *@
+
+<div class="col-md-6">
+    <label asp-for="AdresseDestination" class="bt-form-label"></label>
+    <input asp-for="AdresseDestination" class="bt-form-control" placeholder="Ex : Boulevard du Port n°8" />
+    <span asp-validation-for="AdresseDestination" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="QuartierDestination" class="bt-form-label"></label>
+    <input asp-for="QuartierDestination" class="bt-form-control" placeholder="Ex : Ville Basse" />
+    <span asp-validation-for="QuartierDestination" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="ContactDestination" class="bt-form-label"></label>
+    <input asp-for="ContactDestination" class="bt-form-control" placeholder="Nom de la personne qui réceptionne" />
+    <span asp-validation-for="ContactDestination" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="TelephoneDestination" class="bt-form-label"></label>
+    <input asp-for="TelephoneDestination" class="bt-form-control" type="tel" placeholder="Ex : +243 81 000 0000" />
+    <span asp-validation-for="TelephoneDestination" class="text-danger small"></span>
+</div>
+
+<div class="col-md-12">
+    <label asp-for="Description" class="bt-form-label">Détails / instructions spéciales</label>
+    <textarea asp-for="Description" class="bt-form-control" rows="3" placeholder="Nature des marchandises, denrées périssables, point d'accès, horaires de réception..."></textarea>
+    <span asp-validation-for="Description" class="text-danger small"></span>
+</div>

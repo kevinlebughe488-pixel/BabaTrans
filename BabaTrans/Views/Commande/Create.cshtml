@@ -4,22 +4,22 @@
     ViewData["Title"] = "Déposer une Commande";
     var tarifs = ViewBag.ParametresTarification as BabaTrans.Services.ParametresTarification;
     var tarifsJson = JsonSerializer.Serialize(tarifs ?? new BabaTrans.Services.ParametresTarification(2000m, 150m, 3000m, 5000m, new Dictionary<string, decimal>()));
+    var estClient = ViewBag.EstClient == true;
 }
 
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="bt-card fade-in">
             <div class="bt-card-header">
-                <h5><i class="bi bi-box-seam text-primary me-2"></i>Nouvelle Commande de Livraison</h5>
+                <h5><i class="bi bi-box-seam text-primary me-2"></i>Nouvelle commande de livraison</h5>
                 <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Retour</a>
             </div>
             <div class="bt-card-body">
                 <form asp-action="Create" method="post">
-                    @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-4"></div>
 
                     <div class="row g-3">
-                        @if (ViewBag.EstClient == true)
+                        @if (estClient)
                         {
                             var clientConnecte = ViewBag.ClientConnecte as BabaTrans.Models.Client;
                             <div class="col-md-12">
@@ -30,83 +30,77 @@
                         else
                         {
                             <div class="col-md-12">
-                                <label asp-for="ClientId" class="bt-form-label">Supermarché Client</label>
+                                <label asp-for="ClientId" class="bt-form-label">Supermarché client</label>
                                 <select asp-for="ClientId" class="bt-form-control" asp-items="ViewBag.Clients">
                                     <option value="">-- Sélectionnez le supermarché expéditeur --</option>
                                 </select>
-                                <span asp-validation-for="ClientId" class="text-danger"></span>
+                                <span asp-validation-for="ClientId" class="text-danger small"></span>
                             </div>
                         }
 
                         <div class="col-md-6">
                             <label asp-for="VilleDestination" class="bt-form-label"></label>
-                            <input asp-for="VilleDestination" class="bt-form-control" id="destinationInput" placeholder="Ex: Lubumbashi, Goma, Matadi, Kisangani" />
-                            <span asp-validation-for="VilleDestination" class="text-danger"></span>
+                            <input asp-for="VilleDestination" class="bt-form-control" id="destinationInput" list="villesConnues" placeholder="Ex : Lubumbashi, Goma, Matadi" autocomplete="off" />
+                            <datalist id="villesConnues">
+                                @if (tarifs != null)
+                                {
+                                    foreach (var ville in tarifs.SupplementsDestination.Keys)
+                                    {
+                                        <option value="@ville"></option>
+                                    }
+                                }
+                            </datalist>
+                            <span asp-validation-for="VilleDestination" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-6">
                             <label asp-for="PoidsEstimeKg" class="bt-form-label"></label>
                             <div class="input-group">
-                                <input asp-for="PoidsEstimeKg" class="bt-form-control" id="poidsEstimeInput" type="number" min="0.1" max="10000" step="0.1" placeholder="Ex: 125" />
+                                <input asp-for="PoidsEstimeKg" class="bt-form-control" id="poidsEstimeInput" type="number" min="0.1" max="10000" step="0.1" placeholder="Ex : 125" />
                                 <span class="input-group-text">kg</span>
                             </div>
-                            <span asp-validation-for="PoidsEstimeKg" class="text-danger"></span>
-                            <div class="text-muted small mt-1">Estimation du poids total de l'expédition.</div>
+                            <span asp-validation-for="PoidsEstimeKg" class="text-danger small"></span>
+                            <div class="bt-form-hint">Estimation du poids total. Le tarif sera recalculé sur le poids réel des colis.</div>
                         </div>
 
-                        @if (ViewBag.EstClient != true)
+                        @if (!estClient)
                         {
-                            <div class="col-md-6">
-                                <label asp-for="TrajetId" class="bt-form-label">Trajet Prévu (Optionnel)</label>
+                            <div class="col-md-12">
+                                <label asp-for="TrajetId" class="bt-form-label">Trajet prévu (optionnel)</label>
                                 <select asp-for="TrajetId" class="bt-form-control" asp-items="ViewBag.Trajets">
-                                    <option value="">-- Affectation automatique ultérieure --</option>
+                                    <option value="">-- Affectation ultérieure --</option>
                                 </select>
-                                <span asp-validation-for="TrajetId" class="text-danger"></span>
+                                <span asp-validation-for="TrajetId" class="text-danger small"></span>
+                                <div class="bt-form-hint">Le trajet doit arriver dans la ville de destination.</div>
                             </div>
                         }
 
-                        <div class="col-md-6">
-                            <label asp-for="ContactDestination" class="bt-form-label">Contact destinataire</label>
-                            <input asp-for="ContactDestination" class="bt-form-control" placeholder="Nom du destinataire ou contact" />
-                            <span asp-validation-for="ContactDestination" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label asp-for="TelephoneDestination" class="bt-form-label">Téléphone destinataire</label>
-                            <input asp-for="TelephoneDestination" class="bt-form-control" placeholder="Ex: +243 81 000 0000" />
-                            <span asp-validation-for="TelephoneDestination" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-md-12">
-                            <label asp-for="Description" class="bt-form-label">Détails / Instructions Spéciales</label>
-                            <textarea asp-for="Description" class="bt-form-control" rows="3" placeholder="Nature des marchandises, précautions particulières, denrées périssables, point d'accès, etc."></textarea>
-                            <span asp-validation-for="Description" class="text-danger"></span>
-                        </div>
+                        <partial name="_ChampsDestination" model="Model" />
 
                         <div class="col-12">
-                            <div class="p-3 rounded-3 border bg-light" style="border-color: #cbd5e1 !important;">
+                            <div class="bt-panel">
                                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                                     <div>
-                                        <div class="fw-semibold text-dark d-flex align-items-center gap-2">
+                                        <div class="fw-semibold text-heading d-flex align-items-center gap-2">
                                             <i class="bi bi-calculator-fill text-primary"></i> Montant estimé de la livraison
                                         </div>
                                         <div class="text-muted small mt-1">
-                                            Calculé selon la destination et le poids. Le montant définitif pourra être ajusté après pesée réelle.
+                                            Calculé selon la destination et le poids. Le montant définitif est ajusté après pesée des colis.
                                         </div>
                                     </div>
                                     <div class="text-md-end">
-                                        <div id="tarifEstime"></div>
-                                        <div class="text-muted small" id="detailTarif"></div>
+                                        <div id="tarifEstime" class="text-primary fw-bold fs-5">—</div>
+                                        <div class="text-muted small" id="detailTarif">Indiquez le poids estimé</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
                         <a asp-action="Index" class="bt-btn bt-btn-outline">Annuler</a>
                         <button type="submit" class="bt-btn bt-btn-primary">
-                            <i class="bi bi-check-circle"></i> Valider la Commande
+                            <i class="bi bi-check-circle"></i> Valider la commande
                         </button>
                     </div>
                 </form>
@@ -125,28 +119,31 @@
         const tarifEstime = document.getElementById('tarifEstime');
         const detailTarif = document.getElementById('detailTarif');
 
+        // Même règle que le serveur : comparaison sans casse ni accents.
+        const normaliser = (texte) => (texte || '').trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+
         function calculerTarif() {
             const poids = Number.parseFloat(poidsInput.value);
             if (!Number.isFinite(poids) || poids <= 0) {
-                tarifEstime.innerHTML = '';
-                detailTarif.textContent = '';
+                tarifEstime.textContent = '—';
+                detailTarif.textContent = 'Indiquez le poids estimé';
                 return;
             }
 
-            const destination = (destinationInput?.value || '').trim().toUpperCase();
+            const destination = normaliser(destinationInput.value);
             const supplement = Object.entries(tarifConfig.SupplementsDestination)
-                .find(([ville]) => ville.trim().toUpperCase() === destination)?.[1]
+                .find(([ville]) => normaliser(ville) === destination)?.[1]
                 ?? tarifConfig.SupplementDestinationParDefaut;
             const montant = Math.max(
                 tarifConfig.MinimumFacturable,
                 tarifConfig.ForfaitBase + (poids * tarifConfig.TarifParKg) + Number(supplement));
             const montantArrondi = Math.ceil(montant / 1000) * 1000;
-            tarifEstime.innerHTML = `<span class="text-primary fw-bold font-monospace fs-5">${montantArrondi.toLocaleString('fr-FR')} FC</span>`;
-            detailTarif.textContent = `${poids.toLocaleString('fr-FR')} kg · ${(destinationInput?.value || '').trim() || 'Destination standard'}`;
+            tarifEstime.textContent = `${montantArrondi.toLocaleString('fr-FR')} FC`;
+            detailTarif.textContent = `${poids.toLocaleString('fr-FR')} kg · ${destinationInput.value.trim() || 'destination standard'}`;
         }
 
-        if (destinationInput) destinationInput.addEventListener('input', calculerTarif);
-        if (poidsInput) poidsInput.addEventListener('input', calculerTarif);
+        destinationInput.addEventListener('input', calculerTarif);
+        poidsInput.addEventListener('input', calculerTarif);
         calculerTarif();
     </script>
 }

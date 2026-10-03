@@ -21,9 +21,11 @@ namespace BabaTrans.Models
         public string VilleArrivee { get; set; } = string.Empty;
 
         [Display(Name = "Distance (km)")]
+        [Range(1, 10000, ErrorMessage = "La distance doit être comprise entre 1 et 10 000 km.")]
         public double? DistanceKm { get; set; }
 
         [Display(Name = "Durée estimée (heures)")]
+        [Range(0.5, 500, ErrorMessage = "La durée doit être comprise entre 0,5 et 500 heures.")]
         public double? DureeEstimeeHeures { get; set; }
 
         // Relations

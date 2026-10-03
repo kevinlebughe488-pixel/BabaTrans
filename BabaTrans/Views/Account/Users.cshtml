@@ -1,15 +1,16 @@
 @{
     ViewData["Title"] = "Gestion des Utilisateurs & Rôles";
-    var userRoles = ViewBag.UserRoles as List<(BabaTrans.Models.Utilisateur User, IList<string> Roles)>;
+    var userRoles = ViewBag.UserRoles as List<(BabaTrans.Models.Utilisateur User, IList<string> Roles)> ?? new();
+    var currentUserId = ViewBag.CurrentUserId as string;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="bt-page-header">
     <div>
-        <h4 class="text-white fw-bold mb-1"><i class="bi bi-people-fill text-primary me-2"></i>Contrôle d'Accès & RBAC</h4>
-        <div class="text-muted small">Consultez et administrez les comptes autorisés dans le système</div>
+        <h4 class="fw-bold text-heading"><i class="bi bi-people-fill text-primary me-2"></i>Utilisateurs & rôles</h4>
+        <div class="text-muted small">Comptes autorisés à se connecter au système</div>
     </div>
     <a asp-action="Register" class="bt-btn bt-btn-primary">
-        <i class="bi bi-person-plus-fill"></i> Nouvel Utilisateur
+        <i class="bi bi-person-plus-fill"></i> Nouvel utilisateur
     </a>
 </div>
 
@@ -21,57 +22,61 @@
                     <tr>
                         <th>Utilisateur</th>
                         <th>Email</th>
-                        <th>Rôle RBAC</th>
-                        <th>Matricule / Réf</th>
-                        <th>Date Création</th>
+                        <th>Rôle</th>
+                        <th>Matricule</th>
+                        <th>Créé le</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (userRoles != null && userRoles.Any())
+                    @if (userRoles.Any())
                     {
                         foreach (var item in userRoles)
                         {
                             var role = item.Roles.FirstOrDefault() ?? "Sans rôle";
-                            var badgeClass = role switch {
+                            var badgeClass = role switch
+                            {
                                 "Administrateur" => "bt-badge-danger",
                                 "Agent" => "bt-badge-info",
                                 "Livreur" => "bt-badge-accent",
                                 "Client" => "bt-badge-warning",
-                                _ => "bt-badge-primary"
+                                _ => "bt-badge-neutral"
                             };
+                            var estMoi = item.User.Id == currentUserId;
 
-                            <tr>
+                            <tr class="@(item.User.EstActif ? "" : "opacity-75")">
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <div class="user-avatar" style="width:34px; height:34px; border-radius:8px; background:rgba(79,70,229,0.2); display:flex; align-items:center; justify-content:center; color:var(--bt-primary-light); font-weight:bold;">
-                                            @($"{item.User.Prenom?.FirstOrDefault()}{item.User.Nom?.FirstOrDefault()}".ToUpper())
+                                        <div class="bt-avatar bt-avatar-sm">
+                                            @($"{item.User.Prenom.FirstOrDefault()}{item.User.Nom.FirstOrDefault()}".ToUpper())
                                         </div>
                                         <div>
-                                            <div class="fw-bold text-white">@item.User.Prenom @item.User.Nom</div>
+                                            <div class="fw-bold text-heading">@item.User.Prenom @item.User.Nom</div>
+                                            @if (estMoi)
+                                            {
+                                                <div class="text-muted small">C'est vous</div>
+                                            }
                                         </div>
                                     </div>
                                 </td>
                                 <td>@item.User.Email</td>
-                                <td>
-                                    <span class="bt-badge @badgeClass">@role</span>
-                                </td>
+                                <td><span class="bt-badge @badgeClass">@role</span></td>
                                 <td>
                                     @if (!string.IsNullOrEmpty(item.User.Matricule))
                                     {
-                                        <span class="text-muted small"><i class="bi bi-badge-ad me-1"></i>@item.User.Matricule</span>
+                                        <span class="bt-code">@item.User.Matricule</span>
                                     }
                                     else if (!string.IsNullOrEmpty(item.User.Immatriculation))
                                     {
-                                        <span class="text-muted small"><i class="bi bi-truck me-1"></i>@item.User.Immatriculation</span>
+                                        <span class="bt-code">@item.User.Immatriculation</span>
                                     }
                                     else
                                     {
                                         <span class="text-muted small">—</span>
                                     }
                                 </td>
-                                <td>@item.User.DateCreation.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-nowrap">@item.User.DateCreation.ToString("dd/MM/yyyy")</td>
                                 <td>
                                     @if (item.User.EstActif)
                                     {
@@ -83,19 +88,22 @@
                                     }
                                 </td>
                                 <td class="text-end">
-                                    <form asp-action="ToggleUser" asp-route-id="@item.User.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="bt-btn bt-btn-outline bt-btn-sm" title="@(item.User.EstActif ? "Désactiver" : "Activer")">
-                                            @if (item.User.EstActif)
-                                            {
-                                                <i class="bi bi-slash-circle text-warning"></i> <span>Désactiver</span>
-                                            }
-                                            else
-                                            {
-                                                <i class="bi bi-check2 text-success"></i> <span>Réactiver</span>
-                                            }
-                                        </button>
-                                    </form>
+                                    @if (!estMoi)
+                                    {
+                                        <form asp-action="ToggleUser" asp-route-id="@item.User.Id" method="post" class="d-inline"
+                                              data-confirm="@(item.User.EstActif ? $"Désactiver le compte de {item.User.Prenom} {item.User.Nom} ? Il sera déconnecté." : $"Réactiver le compte de {item.User.Prenom} {item.User.Nom} ?")">
+                                            <button type="submit" class="bt-btn bt-btn-outline bt-btn-sm">
+                                                @if (item.User.EstActif)
+                                                {
+                                                    <i class="bi bi-slash-circle text-warning"></i> <span>Désactiver</span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-check2 text-success"></i> <span>Réactiver</span>
+                                                }
+                                            </button>
+                                        </form>
+                                    }
                                 </td>
                             </tr>
                         }

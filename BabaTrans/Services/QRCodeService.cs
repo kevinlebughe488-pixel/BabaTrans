@@ -33,16 +33,19 @@ namespace BabaTrans.Services
             using var qrGenerator = new QRCodeGenerator();
             using var qrCodeData = qrGenerator.CreateQrCode(contenu, QRCodeGenerator.ECCLevel.Q);
             using var qrCode = new PngByteQRCode(qrCodeData);
-            var qrCodeBytes = qrCode.GetGraphic(20);
+            // 10 pixels par module suffisent pour une impression nette (image environ 4 fois plus légère qu'avec 20).
+            var qrCodeBytes = qrCode.GetGraphic(10);
             return Convert.ToBase64String(qrCodeBytes);
         }
 
         /// <summary>
         /// Génère le contenu du QR-Code pour un colis donné.
         /// </summary>
-        public string GenererContenuColis(int colisId, string codeSuivi, string description)
+        /// <param name="dateEnregistrement">Date d'enregistrement du colis (fixe, ne change pas à la régénération)</param>
+        public string GenererContenuColis(int colisId, string codeSuivi, string description, DateTime? dateEnregistrement = null)
         {
-            var payload = $"BABATRANS|COLIS:{colisId}|CODE:{codeSuivi}|DESC:{description}|DATE:{DateTime.Now:yyyy-MM-dd HH:mm}";
+            var dateRef = dateEnregistrement ?? DateTime.Now;
+            var payload = $"BABATRANS|COLIS:{colisId}|CODE:{codeSuivi}|DESC:{description}|DATE:{dateRef:yyyy-MM-dd HH:mm}";
             using var hmac = new HMACSHA256(_signingKey);
             var signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)))
                 .TrimEnd('=').Replace('+', '-').Replace('/', '_');

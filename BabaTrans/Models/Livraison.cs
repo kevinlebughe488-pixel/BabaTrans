@@ -28,7 +28,7 @@ namespace BabaTrans.Models
         public string? Commentaire { get; set; }
 
         // Relations
-        [Required]
+        [Required(ErrorMessage = "Sélectionnez un colis.")]
         [Display(Name = "Colis")]
         public int ColisId { get; set; }
         [ForeignKey("ColisId")]

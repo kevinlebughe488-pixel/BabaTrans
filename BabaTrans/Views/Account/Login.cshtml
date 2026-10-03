@@ -1,7 +1,6 @@
 @model BabaTrans.ViewModels.LoginViewModel
 @{
     ViewData["Title"] = "Connexion";
-    Layout = "_Layout";
 }
 
 <div class="bt-login-page">
@@ -10,59 +9,58 @@
             <i class="bi bi-truck"></i>
         </div>
         <h2>BABA-TRANS</h2>
-        <div class="login-subtitle">Système Intégré de Suivi & Livraison de Colis</div>
+        <div class="login-subtitle">Système intégré de suivi et de livraison de colis</div>
 
         <form asp-action="Login" asp-route-returnurl="@ViewData["ReturnUrl"]" method="post">
-            @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="bt-alert bt-alert-danger mb-3" role="alert"></div>
 
             <div class="bt-form-group">
-                <label asp-for="Email" class="bt-form-label"><i class="bi bi-envelope me-1"></i> Adresse Email</label>
+                <label asp-for="Email" class="bt-form-label"><i class="bi bi-envelope me-1"></i> Adresse email</label>
                 <input asp-for="Email" class="bt-form-control" placeholder="exemple@babatrans.cd" autocomplete="username" id="emailInput" />
-                <span asp-validation-for="Email" class="text-danger"></span>
+                <span asp-validation-for="Email" class="text-danger small"></span>
             </div>
 
             <div class="bt-form-group">
                 <label asp-for="Password" class="bt-form-label"><i class="bi bi-shield-lock me-1"></i> Mot de passe</label>
                 <input asp-for="Password" class="bt-form-control" placeholder="••••••••" autocomplete="current-password" id="passwordInput" />
-                <span asp-validation-for="Password" class="text-danger"></span>
+                <span asp-validation-for="Password" class="text-danger small"></span>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="form-check">
-                    <input asp-for="RememberMe" class="form-check-input" />
-                    <label asp-for="RememberMe" class="form-check-label text-muted small">Rester connecté</label>
-                </div>
+            <div class="form-check mb-4">
+                <input asp-for="RememberMe" class="form-check-input" />
+                <label asp-for="RememberMe" class="form-check-label text-muted small">Rester connecté</label>
             </div>
 
-            <button type="submit" class="bt-btn bt-btn-primary w-100 mb-3">
+            <button type="submit" class="bt-btn bt-btn-primary w-100 justify-content-center mb-3">
                 <i class="bi bi-box-arrow-in-right"></i> Se connecter
             </button>
         </form>
 
-        <div class="text-center pt-2 border-top border-secondary-subtle small text-muted">
-            Accès réservé aux profils BABA-Trans autorisés
+        <div class="text-center pt-3 border-top small text-muted">
+            Vous avez un code de suivi ?
+            <a asp-controller="Colis" asp-action="Suivi" class="fw-semibold text-decoration-none">Suivre un colis sans compte</a>
         </div>
 
         <!-- Comptes de démonstration prédéfinis -->
-        <div class="mt-4 p-3 rounded-3" style="background: rgba(79, 70, 229, 0.08); border: 1px dashed var(--bt-border);">
-            <div class="text-uppercase small fw-bold text-muted mb-2 text-center" style="font-size: 0.72rem; letter-spacing: 1px;">
-                <i class="bi bi-lightning-charge-fill text-warning"></i> Comptes Démo (1-Click Fill)
+        <div class="bt-demo-accounts">
+            <div class="text-uppercase small fw-bold text-muted mb-2 text-center" style="letter-spacing: 1px;">
+                <i class="bi bi-lightning-charge-fill text-warning"></i> Comptes de démonstration
             </div>
             <div class="d-grid gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary text-start" onclick="fillCredentials('admin@babatrans.cd', 'Admin@123')">
-                    <span class="badge bg-primary me-1">Admin</span> admin@babatrans.cd / Admin@123
+                <button type="button" class="bt-btn bt-btn-outline bt-btn-sm" data-email="admin@babatrans.cd" data-password="Admin@123">
+                    <span class="bt-badge bt-badge-danger">Admin</span> admin@babatrans.cd
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-info text-start" onclick="fillCredentials('agent@babatrans.cd', 'Agent@123')">
-                    <span class="badge bg-info text-dark me-1">Agent</span> agent@babatrans.cd / Agent@123
+                <button type="button" class="bt-btn bt-btn-outline bt-btn-sm" data-email="agent@babatrans.cd" data-password="Agent@123">
+                    <span class="bt-badge bt-badge-info">Agent</span> agent@babatrans.cd
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-success text-start" onclick="fillCredentials('livreur@babatrans.cd', 'Livreur@123')">
-                    <span class="badge bg-success me-1">Livreur</span> livreur@babatrans.cd / Livreur@123
+                <button type="button" class="bt-btn bt-btn-outline bt-btn-sm" data-email="livreur@babatrans.cd" data-password="Livreur@123">
+                    <span class="bt-badge bt-badge-accent">Livreur</span> livreur@babatrans.cd
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-warning text-start" onclick="fillCredentials('client@kinmarche.cd', 'Client@123')">
-                    <span class="badge bg-warning text-dark me-1">Client (Supermarché)</span> client@kinmarche.cd / Client@123
+                <button type="button" class="bt-btn bt-btn-outline bt-btn-sm" data-email="client@kinmarche.cd" data-password="Client@123">
+                    <span class="bt-badge bt-badge-warning">Client</span> client@kinmarche.cd
                 </button>
             </div>
+            <div class="text-center text-muted mt-2" style="font-size: 0.72rem;">Un clic remplit le formulaire.</div>
         </div>
     </div>
 </div>
@@ -70,9 +68,12 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        function fillCredentials(email, pwd) {
-            document.getElementById('emailInput').value = email;
-            document.getElementById('passwordInput').value = pwd;
-        }
+        document.querySelectorAll('.bt-demo-accounts [data-email]').forEach((bouton) => {
+            bouton.addEventListener('click', () => {
+                document.getElementById('emailInput').value = bouton.dataset.email;
+                document.getElementById('passwordInput').value = bouton.dataset.password;
+                document.getElementById('passwordInput').focus();
+            });
+        });
     </script>
 }

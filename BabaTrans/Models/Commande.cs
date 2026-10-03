@@ -24,27 +24,24 @@ namespace BabaTrans.Models
         [StringLength(500)]
         public string? Description { get; set; }
 
-        [NotMapped]
+        // Ces champs n'étaient pas stockés en base et étaient perdus à l'enregistrement.
+        // Ils sont désormais persistés (voir DbInitializer.MettreAJourSchemaAsync).
         [Display(Name = "Poids estimé (kg)")]
-        [Range(0.1, 10000, ErrorMessage = "Le poids estimé doit être supérieur à 0 kg.")]
+        [Range(0.1, 10000, ErrorMessage = "Le poids estimé doit être compris entre 0,1 et 10 000 kg.")]
         public decimal? PoidsEstimeKg { get; set; }
 
-        [NotMapped]
         [Display(Name = "Adresse exacte de livraison")]
         [StringLength(250)]
         public string? AdresseDestination { get; set; }
 
-        [NotMapped]
         [Display(Name = "Quartier / commune")]
         [StringLength(150)]
         public string? QuartierDestination { get; set; }
 
-        [NotMapped]
         [Display(Name = "Contact destinataire")]
         [StringLength(150)]
         public string? ContactDestination { get; set; }
 
-        [NotMapped]
         [Display(Name = "Téléphone destinataire")]
         [StringLength(50)]
         public string? TelephoneDestination { get; set; }
@@ -53,8 +50,8 @@ namespace BabaTrans.Models
         public StatutCommande Statut { get; set; } = StatutCommande.EnAttente;
 
         // Relations
-        [Required]
-        [Display(Name = "Client")]
+        [Required(ErrorMessage = "Sélectionnez un supermarché.")]
+        [Display(Name = "Supermarché")]
         public int ClientId { get; set; }
         [ForeignKey("ClientId")]
         public virtual Client? Client { get; set; }

@@ -1,62 +1,92 @@
 @model BabaTrans.Models.Client
 @{
     ViewData["Title"] = "Fiche Supermarché - " + Model.NomSupermarche;
+    var compteLie = ViewBag.CompteLie as BabaTrans.Models.Utilisateur;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="bt-page-header">
     <div>
-        <h4 class="text-white fw-bold mb-1"><i class="bi bi-shop text-primary me-2"></i>@Model.NomSupermarche</h4>
-        <div class="text-muted small">Partenaire client depuis le @Model.DateCreation.ToString("dd MMMM yyyy")</div>
+        <h4 class="fw-bold text-heading">
+            <i class="bi bi-shop text-primary me-2"></i>@Model.NomSupermarche
+            <span class="bt-badge @(Model.EstActif ? "bt-badge-accent" : "bt-badge-danger") ms-2 align-middle">@(Model.EstActif ? "Actif" : "Inactif")</span>
+        </h4>
+        <div class="text-muted small">Partenaire depuis le @Model.DateCreation.ToString("dd MMMM yyyy")</div>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="bt-btn bt-btn-primary bt-btn-sm"><i class="bi bi-pencil"></i> Modifier</a>
+    <div class="bt-page-actions">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-pencil"></i> Modifier</a>
         <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Liste</a>
     </div>
 </div>
 
 <div class="row g-4">
-    <div class="col-md-4">
-        <div class="bt-card">
+    <div class="col-lg-4">
+        <div class="bt-card mb-4">
             <div class="bt-card-header">
                 <h5>Coordonnées</h5>
             </div>
             <div class="bt-card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-5 text-muted small text-uppercase">Adresse</dt>
-                    <dd class="col-sm-7 text-white">@Model.Adresse</dd>
+                <dl class="bt-dl">
+                    <dt>Adresse</dt>
+                    <dd>@Model.Adresse</dd>
 
-                    <dt class="col-sm-5 text-muted small text-uppercase">Téléphone</dt>
-                    <dd class="col-sm-7 text-white">@Model.Telephone</dd>
+                    <dt>Téléphone</dt>
+                    <dd>@Model.Telephone</dd>
 
-                    <dt class="col-sm-5 text-muted small text-uppercase">Email</dt>
-                    <dd class="col-sm-7 text-white">@(Model.Email ?? "—")</dd>
+                    <dt>Email</dt>
+                    <dd>@(Model.Email ?? "—")</dd>
 
-                    <dt class="col-sm-5 text-muted small text-uppercase">Contact</dt>
-                    <dd class="col-sm-7 text-white">@(Model.PersonneContact ?? "—")</dd>
-
-                    <dt class="col-sm-5 text-muted small text-uppercase">Statut</dt>
-                    <dd class="col-sm-7">
-                        @if (Model.EstActif)
-                        {
-                            <span class="bt-badge bt-badge-accent">Actif</span>
-                        }
-                        else
-                        {
-                            <span class="bt-badge bt-badge-danger">Inactif</span>
-                        }
-                    </dd>
+                    <dt>Contact</dt>
+                    <dd>@(Model.PersonneContact ?? "—")</dd>
                 </dl>
+            </div>
+        </div>
+
+        <div class="bt-card">
+            <div class="bt-card-header">
+                <h5>Compte de connexion</h5>
+            </div>
+            <div class="bt-card-body">
+                @if (compteLie != null)
+                {
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-check-fill text-success fs-4"></i>
+                        <div>
+                            <div class="fw-semibold text-heading">@compteLie.Prenom @compteLie.Nom</div>
+                            <div class="text-muted small">
+                                @compteLie.Email ·
+                                <span class="bt-badge @(compteLie.EstActif ? "bt-badge-accent" : "bt-badge-danger")">@(compteLie.EstActif ? "Actif" : "Désactivé")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small">
+                        <i class="bi bi-person-x me-1"></i>Aucun compte Client ne se connecte avec l'email de ce supermarché.
+                        @if (User.IsInRole("Administrateur") && !string.IsNullOrEmpty(Model.Email))
+                        {
+                            <div class="mt-2">
+                                <a asp-controller="Account" asp-action="Register" class="bt-btn bt-btn-outline bt-btn-sm">
+                                    <i class="bi bi-person-plus"></i> Créer le compte
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>
 
-    <div class="col-md-8">
+    <div class="col-lg-8">
         <div class="bt-card">
             <div class="bt-card-header">
-                <h5>Historique des Commandes (@(Model.Commandes?.Count ?? 0))</h5>
-                <a asp-controller="Commande" asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
-                    <i class="bi bi-plus-lg"></i> Nouvelle Commande
-                </a>
+                <h5>Historique des commandes (@Model.Commandes.Count)</h5>
+                @if (Model.EstActif)
+                {
+                    <a asp-controller="Commande" asp-action="Create" asp-route-clientId="@Model.Id" class="bt-btn bt-btn-primary bt-btn-sm">
+                        <i class="bi bi-plus-lg"></i> Nouvelle commande
+                    </a>
+                }
             </div>
             <div class="bt-card-body p-0">
                 <div class="table-responsive">
@@ -71,19 +101,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if (Model.Commandes != null && Model.Commandes.Any())
+                            @if (Model.Commandes.Any())
                             {
                                 foreach (var cmd in Model.Commandes.OrderByDescending(c => c.DateCommande))
                                 {
                                     <tr>
-                                        <td class="fw-bold text-white">CMD-@cmd.Id</td>
+                                        <td class="fw-bold text-heading">CMD-@cmd.Id</td>
                                         <td>@cmd.DateCommande.ToString("dd/MM/yyyy")</td>
-                                        <td><i class="bi bi-geo-alt text-primary me-1"></i>@cmd.VilleDestination</td>
-                                        <td>
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">@cmd.Statut</span>
-                                        </td>
+                                        <td><i class="bi bi-geo-alt text-danger me-1"></i>@cmd.VilleDestination</td>
+                                        <td><span class="bt-badge @cmd.Statut.Badge()">@cmd.Statut.Libelle()</span></td>
                                         <td class="text-end">
-                                            <a asp-controller="Commande" asp-action="Details" asp-route-id="@cmd.Id" class="bt-btn bt-btn-outline bt-btn-sm">
+                                            <a asp-controller="Commande" asp-action="Details" asp-route-id="@cmd.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Voir la commande">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                         </td>

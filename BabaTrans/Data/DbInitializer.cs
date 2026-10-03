@@ -10,12 +10,38 @@ namespace BabaTrans.Data
     /// </summary>
     public static class DbInitializer
     {
+        /// <summary>
+        /// EnsureCreated() ne modifie jamais une base qui existe déjà.
+        /// On ajoute donc ici, sans perte de données, les colonnes apparues après la création initiale.
+        /// Chaque instruction est idempotente : elle ne fait rien si la colonne existe.
+        /// </summary>
+        public static async Task MettreAJourSchemaAsync(BabaTransContext context)
+        {
+            var colonnes = new (string Table, string Colonne, string Type)[]
+            {
+                ("Commandes", "PoidsEstimeKg", "decimal(10,2) NULL"),
+                ("Commandes", "AdresseDestination", "nvarchar(250) NULL"),
+                ("Commandes", "QuartierDestination", "nvarchar(150) NULL"),
+                ("Commandes", "ContactDestination", "nvarchar(150) NULL"),
+                ("Commandes", "TelephoneDestination", "nvarchar(50) NULL"),
+            };
+
+            foreach (var (table, colonne, type) in colonnes)
+            {
+                var sql = "IF COL_LENGTH('" + table + "', '" + colonne + "') IS NULL "
+                        + "ALTER TABLE [" + table + "] ADD [" + colonne + "] " + type + ";";
+                await context.Database.ExecuteSqlRawAsync(sql);
+            }
+        }
+
         public static async Task SeedAsync(IServiceProvider serviceProvider)
         {
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<Utilisateur>>();
             var context = serviceProvider.GetRequiredService<BabaTransContext>();
             var qrService = serviceProvider.GetRequiredService<QRCodeService>();
+
+            await MettreAJourSchemaAsync(context);
 
             // 1. Créer les 4 rôles RBAC
             string[] roles = { "Administrateur", "Agent", "Livreur", "Client" };
@@ -29,7 +55,7 @@ namespace BabaTrans.Data
 
             // 2. Administrateur par défaut
             var adminEmail = "admin@babatrans.cd";
-            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+            var adminUser = await userManager.FindByEmailAsync(adminEmail) ?? await userManager.FindByNameAsync(adminEmail);
             if (adminUser == null)
             {
                 adminUser = new Utilisateur
@@ -47,10 +73,25 @@ namespace BabaTrans.Data
                     await userManager.AddToRoleAsync(adminUser, "Administrateur");
                 }
             }
+            else
+            {
+                adminUser.UserName = adminEmail;
+                adminUser.Email = adminEmail;
+                adminUser.Nom = "Kalonji";
+                adminUser.Prenom = "Alain";
+                adminUser.EmailConfirmed = true;
+                adminUser.EstActif = true;
+                await userManager.UpdateAsync(adminUser);
+
+                if (!await userManager.IsInRoleAsync(adminUser, "Administrateur"))
+                {
+                    await userManager.AddToRoleAsync(adminUser, "Administrateur");
+                }
+            }
 
             // 3. Agent par défaut
             var agentEmail = "agent@babatrans.cd";
-            var agentUser = await userManager.FindByEmailAsync(agentEmail);
+            var agentUser = await userManager.FindByEmailAsync(agentEmail) ?? await userManager.FindByNameAsync(agentEmail);
             if (agentUser == null)
             {
                 agentUser = new Utilisateur
@@ -69,10 +110,26 @@ namespace BabaTrans.Data
                     await userManager.AddToRoleAsync(agentUser, "Agent");
                 }
             }
+            else
+            {
+                agentUser.UserName = agentEmail;
+                agentUser.Email = agentEmail;
+                agentUser.Nom = "Mukendi";
+                agentUser.Prenom = "Jean";
+                agentUser.Matricule = "AGT-2026-001";
+                agentUser.EmailConfirmed = true;
+                agentUser.EstActif = true;
+                await userManager.UpdateAsync(agentUser);
+
+                if (!await userManager.IsInRoleAsync(agentUser, "Agent"))
+                {
+                    await userManager.AddToRoleAsync(agentUser, "Agent");
+                }
+            }
 
             // 4. Livreur par défaut
             var livreurEmail = "livreur@babatrans.cd";
-            var livreurUser = await userManager.FindByEmailAsync(livreurEmail);
+            var livreurUser = await userManager.FindByEmailAsync(livreurEmail) ?? await userManager.FindByNameAsync(livreurEmail);
             if (livreurUser == null)
             {
                 livreurUser = new Utilisateur
@@ -87,6 +144,22 @@ namespace BabaTrans.Data
                 };
                 var result = await userManager.CreateAsync(livreurUser, "Livreur@123");
                 if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(livreurUser, "Livreur");
+                }
+            }
+            else
+            {
+                livreurUser.UserName = livreurEmail;
+                livreurUser.Email = livreurEmail;
+                livreurUser.Nom = "Kabongo";
+                livreurUser.Prenom = "Pierre";
+                livreurUser.Immatriculation = "LIV-KIN-101";
+                livreurUser.EmailConfirmed = true;
+                livreurUser.EstActif = true;
+                await userManager.UpdateAsync(livreurUser);
+
+                if (!await userManager.IsInRoleAsync(livreurUser, "Livreur"))
                 {
                     await userManager.AddToRoleAsync(livreurUser, "Livreur");
                 }
@@ -111,6 +184,10 @@ namespace BabaTrans.Data
                 {
                     await userManager.AddToRoleAsync(clientUser, "Client");
                 }
+            }
+            else if (!await userManager.IsInRoleAsync(clientUser, "Client"))
+            {
+                await userManager.AddToRoleAsync(clientUser, "Client");
             }
 
             // 6. Supermarchés (Clients)
@@ -182,6 +259,10 @@ namespace BabaTrans.Data
                     ClientId = cl1.Id,
                     TrajetId = t1.Id,
                     VilleDestination = "Matadi",
+                    PoidsEstimeKg = 150m,
+                    AdresseDestination = "Boulevard du Port, Ville Basse",
+                    ContactDestination = "David Mbaya (City Market)",
+                    TelephoneDestination = "+243 82 333 0303",
                     Description = "Palette de produits secs, boissons gazeuses et huiles de table",
                     DateCommande = DateTime.Now.AddDays(-2),
                     Statut = StatutCommande.EnCours
@@ -204,7 +285,7 @@ namespace BabaTrans.Data
                 await context.SaveChangesAsync();
 
                 // 10. Timbre QR-Code généré pour ce colis
-                var qrContenu = qrService.GenererContenuColis(colis1.Id, codeSuivi, colis1.Description);
+                var qrContenu = qrService.GenererContenuColis(colis1.Id, codeSuivi, colis1.Description, colis1.DateEnregistrement);
                 var qrBase64 = qrService.GenererQRCode(qrContenu);
 
                 var timbre = new TimbreQRCode

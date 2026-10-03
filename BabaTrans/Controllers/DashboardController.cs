@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BabaTrans.Data;
+using BabaTrans.Helpers;
 using BabaTrans.Models;
+using BabaTrans.Services;
 using BabaTrans.ViewModels;
 
 namespace BabaTrans.Controllers
@@ -13,54 +15,72 @@ namespace BabaTrans.Controllers
     {
         private readonly BabaTransContext _context;
         private readonly UserManager<Utilisateur> _userManager;
+        private readonly CompteClientService _compteClient;
 
-        public DashboardController(BabaTransContext context, UserManager<Utilisateur> userManager)
+        public DashboardController(BabaTransContext context, UserManager<Utilisateur> userManager, CompteClientService compteClient)
         {
             _context = context;
             _userManager = userManager;
+            _compteClient = compteClient;
         }
 
         public async Task<IActionResult> Index()
         {
-            var user = await _userManager.GetUserAsync(User);
-            var roles = await _userManager.GetRolesAsync(user!);
-            var role = roles.FirstOrDefault() ?? "Utilisateur";
-            ViewBag.UserName = $"{user!.Prenom} {user.Nom}";
-            ViewBag.UserRole = role;
+            // Nom et rôle viennent du cookie de connexion : aucune requête nécessaire.
+            ViewBag.UserName = User.NomComplet();
+            ViewBag.UserRole = User.RolePrincipal();
 
             var model = new DashboardViewModel();
 
             if (User.IsInRole("Client"))
             {
-                var client = await _context.Clients.FirstOrDefaultAsync(c => c.Email == user.Email);
-                var commandes = _context.Commandes.Where(c => client != null && c.ClientId == client.Id);
-                var colis = _context.Colis.Where(c => client != null && c.Commande != null && c.Commande.ClientId == client.Id);
+                var client = await _compteClient.GetClientConnecteAsync(User);
+                if (client == null)
+                {
+                    TempData["Error"] = "Aucun supermarché n'est associé à ce compte. Contactez BABA-Trans.";
+                    return View(model);
+                }
+
+                var commandes = _context.Commandes.Where(c => c.ClientId == client.Id);
+                var colis = _context.Colis.Where(c => c.Commande!.ClientId == client.Id);
 
                 model.TotalCommandes = await commandes.CountAsync();
                 model.CommandesEnAttente = await commandes.CountAsync(c => c.Statut == StatutCommande.EnAttente);
-                model.ColisEnTransit = await colis.CountAsync(c => c.Statut == StatutColis.EnTransit);
+                model.ColisEnTransit = await colis.CountAsync(c => c.Statut == StatutColis.EnTransit || c.Statut == StatutColis.Arrive);
                 model.ColisLivres = await colis.CountAsync(c => c.Statut == StatutColis.Livre);
-                model.TotalColis = await colis.CountAsync();
             }
             else if (User.IsInRole("Livreur"))
             {
-                var livraisons = _context.Livraisons.Where(l => l.LivreurId == user.Id);
-                model.TotalLivraisons = await livraisons.CountAsync();
-                model.CommandesEnAttente = await livraisons.CountAsync(l => l.Statut == StatutLivraison.EnAttente);
-                model.ColisEnTransit = await livraisons.CountAsync(l => l.Statut == StatutLivraison.EnCours);
-                model.LivraisonsConfirmees = await livraisons.CountAsync(l => l.Statut == StatutLivraison.Livree);
-                model.ColisLivres = model.LivraisonsConfirmees;
+                var livreurId = _userManager.GetUserId(User);
+                var parStatut = await _context.Livraisons
+                    .Where(l => l.LivreurId == livreurId)
+                    .GroupBy(l => l.Statut)
+                    .Select(g => new { Statut = g.Key, Nombre = g.Count() })
+                    .ToDictionaryAsync(x => x.Statut, x => x.Nombre);
+
+                model.TotalLivraisons = parStatut.Values.Sum();
+                model.LivraisonsEnAttente = parStatut.GetValueOrDefault(StatutLivraison.EnAttente);
+                model.LivraisonsEnCours = parStatut.GetValueOrDefault(StatutLivraison.EnCours);
+                model.LivraisonsConfirmees = parStatut.GetValueOrDefault(StatutLivraison.Livree);
             }
             else
             {
-                model.TotalClients = await _context.Clients.CountAsync();
-                model.TotalCommandes = await _context.Commandes.CountAsync();
-                model.TotalColis = await _context.Colis.CountAsync();
-                model.TotalLivraisons = await _context.Livraisons.CountAsync();
-                model.ColisEnTransit = await _context.Colis.CountAsync(c => c.Statut == StatutColis.EnTransit);
-                model.LivraisonsConfirmees = await _context.Livraisons.CountAsync(l => l.Statut == StatutLivraison.Livree);
+                var colisParStatut = await _context.Colis
+                    .GroupBy(c => c.Statut)
+                    .Select(g => new { Statut = g.Key, Nombre = g.Count() })
+                    .ToDictionaryAsync(x => x.Statut, x => x.Nombre);
+
+                model.TotalClients = await _context.Clients.CountAsync(c => c.EstActif);
                 model.CommandesEnAttente = await _context.Commandes.CountAsync(c => c.Statut == StatutCommande.EnAttente);
-                model.ColisLivres = await _context.Colis.CountAsync(c => c.Statut == StatutColis.Livre);
+                model.ColisEnTransit = colisParStatut.GetValueOrDefault(StatutColis.EnTransit) + colisParStatut.GetValueOrDefault(StatutColis.Arrive);
+                model.ColisLivres = colisParStatut.GetValueOrDefault(StatutColis.Livre);
+
+                // Colis prêts mais sans livraison active, dans une commande encore ouverte.
+                model.ColisAAffecter = await _context.Colis.CountAsync(c =>
+                    (c.Statut == StatutColis.Enregistre || c.Statut == StatutColis.QRCodeGenere)
+                    && (c.Commande!.Statut == StatutCommande.EnAttente || c.Commande.Statut == StatutCommande.EnCours)
+                    && !c.Livraisons.Any(l => l.Statut == StatutLivraison.EnAttente || l.Statut == StatutLivraison.EnCours));
+                model.LivraisonsAttenteDepart = await _context.Livraisons.CountAsync(l => l.Statut == StatutLivraison.EnAttente);
             }
 
             return View(model);

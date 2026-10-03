@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BabaTrans.Data;
+using BabaTrans.Helpers;
 using BabaTrans.Models;
 
 namespace BabaTrans.Controllers
@@ -24,13 +25,24 @@ namespace BabaTrans.Controllers
         {
             var moyens = await _context.MoyensTransport
                 .Include(m => m.Trajets)
+                .OrderByDescending(m => m.EstDisponible)
+                .ThenBy(m => m.Type)
                 .ToListAsync();
+
+            // Véhicules actuellement engagés sur une livraison (affectée ou en route).
+            ViewBag.VehiculesEngages = (await _context.Livraisons
+                .Where(l => l.MoyenTransportId != null
+                    && (l.Statut == StatutLivraison.EnAttente || l.Statut == StatutLivraison.EnCours))
+                .Select(l => l.MoyenTransportId!.Value)
+                .ToListAsync()).ToHashSet();
+
             return View(moyens);
         }
 
         // GET: Transport/CreateMoyen
         public IActionResult CreateMoyen()
         {
+            // Pas de modèle : le champ capacité reste vide au lieu d'afficher « 0 ».
             return View();
         }
 
@@ -39,6 +51,9 @@ namespace BabaTrans.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateMoyen([Bind("Type,Immatriculation,Capacite,EstDisponible,Description")] MoyenTransport moyen)
         {
+            moyen.Immatriculation = NormaliserImmatriculation(moyen.Immatriculation);
+            await ValiderImmatriculationUniqueAsync(moyen.Immatriculation, idMoyen: null);
+
             if (ModelState.IsValid)
             {
                 _context.Add(moyen);
@@ -64,6 +79,10 @@ namespace BabaTrans.Controllers
         public async Task<IActionResult> EditMoyen(int id, [Bind("Id,Type,Immatriculation,Capacite,EstDisponible,Description")] MoyenTransport moyen)
         {
             if (id != moyen.Id) return NotFound();
+
+            moyen.Immatriculation = NormaliserImmatriculation(moyen.Immatriculation);
+            await ValiderImmatriculationUniqueAsync(moyen.Immatriculation, idMoyen: id);
+
             if (ModelState.IsValid)
             {
                 var moyenExistant = await _context.MoyensTransport.FindAsync(id);
@@ -89,17 +108,15 @@ namespace BabaTrans.Controllers
             var trajets = await _context.Trajets
                 .Include(t => t.MoyenTransport)
                 .Include(t => t.Commandes)
+                .OrderBy(t => t.VilleDepart).ThenBy(t => t.VilleArrivee)
                 .ToListAsync();
             return View(trajets);
         }
 
         // GET: Transport/CreateTrajet
-        public IActionResult CreateTrajet()
+        public async Task<IActionResult> CreateTrajet()
         {
-            ViewBag.MoyensTransport = new SelectList(
-                _context.MoyensTransport.Where(m => m.EstDisponible),
-                "Id",
-                "Type");
+            await PreparerListeVehiculesAsync(null);
             return View();
         }
 
@@ -108,6 +125,8 @@ namespace BabaTrans.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateTrajet([Bind("VilleDepart,VilleArrivee,DistanceKm,DureeEstimeeHeures,MoyenTransportId")] Trajet trajet)
         {
+            await ValiderTrajetAsync(trajet);
+
             if (ModelState.IsValid)
             {
                 _context.Add(trajet);
@@ -115,9 +134,7 @@ namespace BabaTrans.Controllers
                 TempData["Success"] = "Trajet créé avec succès.";
                 return RedirectToAction(nameof(Trajets));
             }
-            ViewBag.MoyensTransport = new SelectList(
-                _context.MoyensTransport.Where(m => m.EstDisponible),
-                "Id", "Type", trajet.MoyenTransportId);
+            await PreparerListeVehiculesAsync(trajet.MoyenTransportId);
             return View(trajet);
         }
 
@@ -127,9 +144,7 @@ namespace BabaTrans.Controllers
             if (id == null) return NotFound();
             var trajet = await _context.Trajets.FindAsync(id);
             if (trajet == null) return NotFound();
-            ViewBag.MoyensTransport = new SelectList(
-                _context.MoyensTransport.Where(m => m.EstDisponible),
-                "Id", "Type", trajet.MoyenTransportId);
+            await PreparerListeVehiculesAsync(trajet.MoyenTransportId);
             return View(trajet);
         }
 
@@ -139,6 +154,8 @@ namespace BabaTrans.Controllers
         public async Task<IActionResult> EditTrajet(int id, [Bind("Id,VilleDepart,VilleArrivee,DistanceKm,DureeEstimeeHeures,MoyenTransportId")] Trajet trajet)
         {
             if (id != trajet.Id) return NotFound();
+            await ValiderTrajetAsync(trajet);
+
             if (ModelState.IsValid)
             {
                 var trajetExistant = await _context.Trajets.FindAsync(id);
@@ -153,10 +170,59 @@ namespace BabaTrans.Controllers
                 TempData["Success"] = "Trajet modifié avec succès.";
                 return RedirectToAction(nameof(Trajets));
             }
-            ViewBag.MoyensTransport = new SelectList(
-                _context.MoyensTransport.Where(m => m.EstDisponible),
-                "Id", "Type", trajet.MoyenTransportId);
+            await PreparerListeVehiculesAsync(trajet.MoyenTransportId);
             return View(trajet);
+        }
+
+        private async Task ValiderTrajetAsync(Trajet trajet)
+        {
+            trajet.VilleDepart = trajet.VilleDepart?.Trim() ?? string.Empty;
+            trajet.VilleArrivee = trajet.VilleArrivee?.Trim() ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(trajet.VilleDepart) && StatutHelper.MemeVille(trajet.VilleDepart, trajet.VilleArrivee))
+                ModelState.AddModelError(nameof(Trajet.VilleArrivee), "La ville d'arrivée doit être différente de la ville de départ.");
+
+            var existeDeja = (await _context.Trajets
+                    .Where(t => t.Id != trajet.Id)
+                    .Select(t => new { t.VilleDepart, t.VilleArrivee })
+                    .ToListAsync())
+                .Any(t => StatutHelper.MemeVille(t.VilleDepart, trajet.VilleDepart)
+                       && StatutHelper.MemeVille(t.VilleArrivee, trajet.VilleArrivee));
+            if (existeDeja)
+                ModelState.AddModelError(string.Empty, $"Le trajet {trajet.VilleDepart} → {trajet.VilleArrivee} existe déjà.");
+
+            if (trajet.MoyenTransportId.HasValue && !await _context.MoyensTransport.AnyAsync(m => m.Id == trajet.MoyenTransportId))
+                ModelState.AddModelError(nameof(Trajet.MoyenTransportId), "Le véhicule sélectionné n'existe pas.");
+        }
+
+        private async Task ValiderImmatriculationUniqueAsync(string? immatriculation, int? idMoyen)
+        {
+            if (string.IsNullOrEmpty(immatriculation))
+                return;
+
+            if (await _context.MoyensTransport.AnyAsync(m => m.Immatriculation == immatriculation && m.Id != idMoyen))
+                ModelState.AddModelError(nameof(MoyenTransport.Immatriculation), "Cette immatriculation est déjà enregistrée.");
+        }
+
+        private static string? NormaliserImmatriculation(string? immatriculation)
+            => string.IsNullOrWhiteSpace(immatriculation) ? null : immatriculation.Trim().ToUpperInvariant();
+
+        /// <summary>Véhicules disponibles, plus le véhicule déjà associé au trajet même s'il est indisponible.</summary>
+        private async Task PreparerListeVehiculesAsync(int? moyenTransportId)
+        {
+            var vehicules = await _context.MoyensTransport
+                .Where(m => m.EstDisponible || m.Id == moyenTransportId)
+                .OrderBy(m => m.Type)
+                .ToListAsync();
+
+            ViewBag.MoyensTransport = new SelectList(
+                vehicules.Select(m => new
+                {
+                    m.Id,
+                    Display = $"{m.Type} · {m.Immatriculation ?? "sans immatriculation"} · {m.Capacite:N0} kg"
+                              + (m.EstDisponible ? "" : " (indisponible)")
+                }),
+                "Id", "Display", moyenTransportId);
         }
     }
 }

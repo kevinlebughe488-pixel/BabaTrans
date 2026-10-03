@@ -1,102 +1,110 @@
 @model BabaTrans.Models.Livraison
 @{
-    ViewData["Title"] = "Expédition #" + Model.Id;
-    var badgeClass = Model.Statut switch {
-        BabaTrans.Models.StatutLivraison.EnAttente => "bt-badge-warning",
-        BabaTrans.Models.StatutLivraison.EnCours => "bt-badge-orange",
-        BabaTrans.Models.StatutLivraison.Livree => "bt-badge-accent",
-        BabaTrans.Models.StatutLivraison.Echouee => "bt-badge-danger",
-        _ => "bt-badge-primary"
-    };
+    ViewData["Title"] = "Livraison #" + Model.Id;
+    var enAttente = Model.Statut == StatutLivraison.EnAttente;
+    var enCours = Model.Statut == StatutLivraison.EnCours;
+    var commande = Model.Colis?.Commande;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="bt-page-header">
     <div>
-        <h4 class="text-white fw-bold mb-1">
-            <i class="bi bi-send-check-fill text-primary me-2"></i>Expédition #@Model.Id
-            <span class="bt-badge @badgeClass ms-2">@Model.Statut</span>
+        <h4 class="fw-bold text-heading">
+            <i class="bi bi-send-check-fill text-primary me-2"></i>Livraison #@Model.Id
+            <span class="bt-badge @Model.Statut.Badge() ms-2 align-middle">@Model.Statut.Libelle()</span>
         </h4>
-        <div class="text-muted small">Affectée pour le colis #@Model.ColisId</div>
+        <div class="text-muted small">Colis #@Model.ColisId · <span class="bt-code">@Model.Colis?.CodeSuivi</span></div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="bt-page-actions">
+        @if (enAttente || enCours)
+        {
+            <button type="button" class="bt-btn bt-btn-outline bt-btn-sm text-danger" data-bs-toggle="modal" data-bs-target="#echecModal">
+                <i class="bi bi-exclamation-octagon"></i> Déclarer un échec
+            </button>
+        }
         <a asp-action="Index" class="bt-btn bt-btn-outline bt-btn-sm"><i class="bi bi-arrow-left"></i> Liste des livraisons</a>
     </div>
 </div>
 
-<!-- Workflow Action Bar (Direct Sequence Diagram Steps) -->
-<div class="bt-card mb-4 border-primary">
-    <div class="bt-card-header bg-primary bg-opacity-10">
-        <h5><i class="bi bi-play-circle-fill text-accent me-2"></i>Actions Opérationnelles Livreur</h5>
+@if (Model.Statut == StatutLivraison.Echouee)
+{
+    <div class="bt-alert bt-alert-danger">
+        <i class="bi bi-x-octagon-fill fs-5"></i>
+        <div>Cette livraison a échoué. Le colis est revenu au dépôt et peut être réaffecté à une nouvelle livraison.</div>
+    </div>
+}
+
+<!-- Étapes opérationnelles -->
+<div class="bt-card mb-4">
+    <div class="bt-card-header">
+        <h5><i class="bi bi-play-circle-fill text-primary me-2"></i>Étapes de la livraison</h5>
     </div>
     <div class="bt-card-body">
-        <div class="row g-3 align-items-center">
-            <!-- Step 1: Scan Départ -->
+        <div class="row g-3">
+            <!-- 1. Scan départ -->
             <div class="col-md-4">
-                <div class="p-3 rounded bg-light border text-center h-100 d-flex flex-column justify-content-between">
+                <div class="bt-panel text-center h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="fw-bold text-dark mb-1"><i class="bi bi-upc-scan text-warning me-1"></i> 1. Scan Départ</div>
-                        <p class="text-muted small mb-2">Prise en charge au dépôt logistique BABA-Trans.</p>
+                        <div class="fw-bold text-heading mb-1"><i class="bi bi-upc-scan text-warning me-1"></i> 1. Scan départ</div>
+                        <p class="text-muted small mb-2">Prise en charge au dépôt BABA-Trans.</p>
                         @if (Model.DateDepart.HasValue)
                         {
                             <span class="bt-badge bt-badge-accent mb-2">
-                                <i class="bi bi-check2"></i> Effectué le @Model.DateDepart.Value.ToString("dd/MM/yyyy HH:mm")
+                                <i class="bi bi-check2"></i> Le @Model.DateDepart.Value.ToString("dd/MM/yyyy HH:mm")
                             </span>
                         }
                     </div>
-                    @if (!Model.DateDepart.HasValue && Model.Statut == BabaTrans.Models.StatutLivraison.EnAttente)
+                    @if (enAttente)
                     {
                         <form asp-action="ScannerDepart" asp-route-id="@Model.Id" method="post">
-                            @Html.AntiForgeryToken()
                             <button type="submit" class="bt-btn bt-btn-warning w-100 justify-content-center bt-btn-sm">
-                                <i class="bi bi-camera"></i> Valider Scan Départ
+                                <i class="bi bi-camera"></i> Valider le scan de départ
                             </button>
                         </form>
                     }
                 </div>
             </div>
 
-            <!-- Step 2: Scan Arrivée -->
+            <!-- 2. Scan arrivée -->
             <div class="col-md-4">
-                <div class="p-3 rounded bg-light border text-center h-100 d-flex flex-column justify-content-between">
+                <div class="bt-panel text-center h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="fw-bold text-dark mb-1"><i class="bi bi-geo-alt text-info me-1"></i> 2. Scan Arrivée</div>
-                        <p class="text-muted small mb-2">Arrivée effective dans la ville de destination.</p>
+                        <div class="fw-bold text-heading mb-1"><i class="bi bi-geo-alt text-primary me-1"></i> 2. Scan arrivée</div>
+                        <p class="text-muted small mb-2">Arrivée dans la ville de destination.</p>
                         @if (Model.DateArrivee.HasValue)
                         {
                             <span class="bt-badge bt-badge-accent mb-2">
-                                <i class="bi bi-check2"></i> Arrivé le @Model.DateArrivee.Value.ToString("dd/MM/yyyy HH:mm")
+                                <i class="bi bi-check2"></i> Le @Model.DateArrivee.Value.ToString("dd/MM/yyyy HH:mm")
                             </span>
                         }
                     </div>
-                    @if (Model.DateDepart.HasValue && !Model.DateArrivee.HasValue && Model.Statut == BabaTrans.Models.StatutLivraison.EnCours)
+                    @if (enCours && !Model.DateArrivee.HasValue)
                     {
                         <form asp-action="ScannerArrivee" asp-route-id="@Model.Id" method="post">
-                            @Html.AntiForgeryToken()
                             <button type="submit" class="bt-btn bt-btn-primary w-100 justify-content-center bt-btn-sm">
-                                <i class="bi bi-camera"></i> Valider Scan Arrivée
+                                <i class="bi bi-camera"></i> Valider le scan d'arrivée
                             </button>
                         </form>
                     }
                 </div>
             </div>
 
-            <!-- Step 3: Confirmer la livraison -->
+            <!-- 3. Confirmation -->
             <div class="col-md-4">
-                <div class="p-3 rounded bg-light border text-center h-100 d-flex flex-column justify-content-between">
+                <div class="bt-panel text-center h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="fw-bold text-dark mb-1"><i class="bi bi-patch-check text-accent me-1"></i> 3. Confirmer Livraison</div>
-                        <p class="text-muted small mb-2">Remise finale au responsable du supermarché.</p>
+                        <div class="fw-bold text-heading mb-1"><i class="bi bi-patch-check text-success me-1"></i> 3. Remise confirmée</div>
+                        <p class="text-muted small mb-2">Remise au destinataire, avec le nom du signataire.</p>
                         @if (Model.DateLivraison.HasValue)
                         {
                             <span class="bt-badge bt-badge-accent mb-2">
-                                <i class="bi bi-check-all"></i> Remis le @Model.DateLivraison.Value.ToString("dd/MM/yyyy HH:mm")
+                                <i class="bi bi-check-all"></i> Le @Model.DateLivraison.Value.ToString("dd/MM/yyyy HH:mm")
                             </span>
                         }
                     </div>
-                    @if (Model.DateArrivee.HasValue && Model.Statut != BabaTrans.Models.StatutLivraison.Livree)
+                    @if (enCours && Model.DateArrivee.HasValue)
                     {
                         <button type="button" class="bt-btn bt-btn-accent w-100 justify-content-center bt-btn-sm" data-bs-toggle="modal" data-bs-target="#confirmModal">
-                            <i class="bi bi-pen"></i> Confirmer la Réception
+                            <i class="bi bi-pen"></i> Confirmer la remise
                         </button>
                     }
                 </div>
@@ -105,154 +113,194 @@
     </div>
 </div>
 
-<!-- Modal Confirmation -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-white border text-dark shadow-lg">
-            <div class="modal-header border-bottom">
-                <h5 class="modal-title"><i class="bi bi-patch-check-fill text-accent me-2"></i>Confirmation de Remise</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form asp-action="Confirmer" asp-route-id="@Model.Id" method="post">
-                @Html.AntiForgeryToken()
-                <div class="modal-body">
-                    <p class="text-muted small">
-                        En confirmant, vous attestez que le colis a été réceptionné conforme par le supermarché partenaire. Une notification de livraison sera enregistrée.
-                    </p>
-                    <div class="bt-form-group">
-                        <label class="bt-form-label">Commentaire / Nom du signataire</label>
-                        <input type="text" name="commentaire" class="bt-form-control" placeholder="Ex: Réceptionné sans dommage par M. Paul, gérant" />
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="bt-btn bt-btn-outline" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="bt-btn bt-btn-accent">Confirmer définitivement</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <div class="row g-4">
-    <!-- Colis & Timbre associé -->
+    <!-- Colis, timbre et adresse de livraison -->
     <div class="col-md-6">
         <div class="bt-card h-100">
             <div class="bt-card-header">
-                <h5>Colis et Timbre Associé</h5>
-                @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                <h5>Colis & destination</h5>
+                @if (User.EstPersonnel())
                 {
-                    <a asp-controller="Colis" asp-action="Details" asp-route-id="@Model.ColisId" class="bt-btn bt-btn-outline bt-btn-sm">
-                        Fiche Colis
-                    </a>
+                    <a asp-controller="Colis" asp-action="Details" asp-route-id="@Model.ColisId" class="bt-btn bt-btn-outline bt-btn-sm">Fiche colis</a>
                 }
                 else if (!string.IsNullOrEmpty(Model.Colis?.CodeSuivi))
                 {
-                    <a asp-controller="Colis" asp-action="Suivi" asp-route-code="@Model.Colis.CodeSuivi" class="bt-btn bt-btn-outline bt-btn-sm">
-                        Suivi
-                    </a>
+                    <a asp-controller="Colis" asp-action="Suivi" asp-route-code="@Model.Colis.CodeSuivi" class="bt-btn bt-btn-outline bt-btn-sm">Suivi</a>
                 }
             </div>
             <div class="bt-card-body">
                 @if (Model.Colis != null)
                 {
                     <div class="d-flex align-items-center gap-3 mb-3">
-                        @if (Model.Colis.TimbreQRCode != null && !string.IsNullOrEmpty(Model.Colis.TimbreQRCode.ImageBase64))
+                        @if (!string.IsNullOrEmpty(Model.Colis.TimbreQRCode?.ImageBase64))
                         {
-                            <div class="p-2 bg-white rounded shadow">
-                                <img src="data:image/png;base64,@Model.Colis.TimbreQRCode.ImageBase64" alt="QR" style="width: 80px; height: 80px;" />
+                            <div class="bt-qr-code p-2">
+                                <img src="data:image/png;base64,@Model.Colis.TimbreQRCode.ImageBase64" alt="QR du colis" style="width: 80px; height: 80px;" />
                             </div>
                         }
                         <div>
-                            <div class="font-monospace fw-bold text-accent">@Model.Colis.CodeSuivi</div>
-                            <div class="fw-semibold text-white">@Model.Colis.Description</div>
+                            <div class="fw-semibold text-heading">@Model.Colis.Description</div>
                             <div class="text-muted small">Poids : @Model.Colis.Poids kg</div>
+                            <span class="bt-badge @Model.Colis.Statut.Badge() mt-1">@Model.Colis.Statut.Libelle()</span>
                         </div>
                     </div>
 
-                    <dl class="row mb-0 small">
-                        <dt class="col-sm-5 text-muted">Supermarché Client :</dt>
-                        <dd class="col-sm-7 text-white fw-bold">@(Model.Colis.Commande?.Client?.NomSupermarche ?? "Inconnu")</dd>
+                    <dl class="row bt-dl small">
+                        <dt class="col-sm-5">Expéditeur</dt>
+                        <dd class="col-sm-7 fw-semibold">@(commande?.Client?.NomSupermarche ?? "Inconnu")</dd>
 
-                        <dt class="col-sm-5 text-muted">Ville Destination :</dt>
-                        <dd class="col-sm-7 text-white"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@(Model.Colis.Commande?.VilleDestination ?? "—")</dd>
+                        <dt class="col-sm-5">Ville de destination</dt>
+                        <dd class="col-sm-7"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@(commande?.VilleDestination ?? "—")</dd>
 
-                        <dt class="col-sm-5 text-muted">Adresse de livraison :</dt>
-                        <dd class="col-sm-7 text-white">@(Model.Colis.Commande?.Client?.Adresse ?? "—")</dd>
+                        <dt class="col-sm-5">Adresse de livraison</dt>
+                        <dd class="col-sm-7">
+                            @(commande?.AdresseDestination ?? "Non précisée")
+                            @if (!string.IsNullOrEmpty(commande?.QuartierDestination))
+                            {
+                                <span class="text-muted">(@commande.QuartierDestination)</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-5">Destinataire</dt>
+                        <dd class="col-sm-7">
+                            @(commande?.ContactDestination ?? "Non précisé")
+                            @if (!string.IsNullOrEmpty(commande?.TelephoneDestination))
+                            {
+                                <div><a href="tel:@commande.TelephoneDestination" class="text-decoration-none"><i class="bi bi-telephone me-1"></i>@commande.TelephoneDestination</a></div>
+                            }
+                        </dd>
+
+                        @if (!string.IsNullOrEmpty(commande?.Description))
+                        {
+                            <dt class="col-sm-5">Instructions</dt>
+                            <dd class="col-sm-7">@commande.Description</dd>
+                        }
                     </dl>
                 }
             </div>
         </div>
     </div>
 
-    <!-- Livreur & Véhicule Affecté -->
+    <!-- Livreur et véhicule -->
     <div class="col-md-6">
         <div class="bt-card h-100">
             <div class="bt-card-header">
-                <h5>Livreur & Véhicule Affecté</h5>
+                <h5>Livreur & véhicule</h5>
             </div>
             <div class="bt-card-body">
                 @if (Model.Livreur != null)
                 {
                     <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="user-avatar" style="width: 48px; height: 48px; font-size: 1.1rem;">
-                            @($"{Model.Livreur.Prenom?.FirstOrDefault()}{Model.Livreur.Nom?.FirstOrDefault()}".ToUpper())
+                        <div class="bt-avatar bt-avatar-lg">
+                            @($"{Model.Livreur.Prenom.FirstOrDefault()}{Model.Livreur.Nom.FirstOrDefault()}".ToUpper())
                         </div>
                         <div>
-                            <h6 class="text-white fw-bold mb-0">@Model.Livreur.Prenom @Model.Livreur.Nom</h6>
-                            <div class="text-accent small font-monospace">Immatriculation : @Model.Livreur.Immatriculation</div>
+                            <h6 class="fw-bold text-heading mb-0">@Model.Livreur.Prenom @Model.Livreur.Nom</h6>
+                            <div class="text-muted small">@Model.Livreur.Email</div>
+                            @if (!string.IsNullOrEmpty(Model.Livreur.Immatriculation))
+                            {
+                                <span class="bt-code">@Model.Livreur.Immatriculation</span>
+                            }
                         </div>
                     </div>
-
-                    <dl class="row mb-0 small">
-                        <dt class="col-sm-5 text-muted">Email Livreur :</dt>
-                        <dd class="col-sm-7 text-white">@Model.Livreur.Email</dd>
-
-                        <dt class="col-sm-5 text-muted">Commentaires :</dt>
-                        <dd class="col-sm-7 text-light fst-italic">@(Model.Commentaire ?? "Aucun commentaire.")</dd>
-                    </dl>
                 }
                 else
                 {
-                    <div class="text-center py-3 text-muted">
-                        Aucun livreur assigné pour cette expédition.
-                    </div>
+                    <div class="text-center py-3 text-muted">Aucun livreur assigné.</div>
                 }
 
-                <hr class="border-secondary my-3" />
+                <hr class="my-3" />
 
-                <h6 class="text-white fw-semibold mb-2"><i class="bi bi-truck text-primary me-2"></i>Moyen de Transport</h6>
                 @if (Model.MoyenTransport != null)
                 {
-                    <dl class="row mb-0 small">
-                        <dt class="col-sm-5 text-muted">Type :</dt>
-                        <dd class="col-sm-7 text-white fw-bold">@Model.MoyenTransport.Type</dd>
+                    <dl class="row bt-dl small">
+                        <dt class="col-sm-5">Véhicule</dt>
+                        <dd class="col-sm-7 fw-semibold">@Model.MoyenTransport.Type</dd>
 
-                        <dt class="col-sm-5 text-muted">Immatriculation :</dt>
-                        <dd class="col-sm-7 text-accent font-monospace">@(Model.MoyenTransport.Immatriculation ?? "—")</dd>
+                        <dt class="col-sm-5">Immatriculation</dt>
+                        <dd class="col-sm-7">@(Model.MoyenTransport.Immatriculation ?? "—")</dd>
 
-                        <dt class="col-sm-5 text-muted">Capacité :</dt>
-                        <dd class="col-sm-7 text-white">@Model.MoyenTransport.Capacite kg</dd>
-
-                        <dt class="col-sm-5 text-muted">Disponibilité :</dt>
-                        <dd class="col-sm-7">
-                            @if (Model.MoyenTransport.EstDisponible)
-                            {
-                                <span class="bt-badge bt-badge-accent"><i class="bi bi-check-circle me-1"></i>Disponible</span>
-                            }
-                            else
-                            {
-                                <span class="bt-badge bt-badge-danger"><i class="bi bi-x-circle me-1"></i>Indisponible</span>
-                            }
-                        </dd>
+                        <dt class="col-sm-5">Capacité</dt>
+                        <dd class="col-sm-7">@Model.MoyenTransport.Capacite.ToString("N0") kg</dd>
                     </dl>
                 }
                 else
                 {
                     <div class="text-center py-2 text-muted small">
-                        <i class="bi bi-exclamation-triangle me-1"></i>Aucun véhicule affecté à cette livraison.
+                        <i class="bi bi-exclamation-triangle me-1"></i>Aucun véhicule affecté.
                     </div>
+                }
+
+                <hr class="my-3" />
+
+                <h6 class="text-uppercase text-muted small fw-bold mb-2">Notes & historique</h6>
+                @if (string.IsNullOrWhiteSpace(Model.Commentaire))
+                {
+                    <div class="text-muted small fst-italic">Aucune note.</div>
+                }
+                else
+                {
+                    <div class="bt-panel small" style="white-space: pre-line;">@Model.Commentaire</div>
                 }
             </div>
         </div>
     </div>
 </div>
+
+@if (enCours && Model.DateArrivee.HasValue)
+{
+    <!-- Confirmation de remise -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitre" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Confirmer" asp-route-id="@Model.Id" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmModalTitre"><i class="bi bi-patch-check-fill text-success me-2"></i>Confirmer la remise</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">
+                            En confirmant, vous attestez que le colis a été remis conforme au destinataire.
+                        </p>
+                        <label for="commentaire" class="bt-form-label">Nom du signataire et remarques</label>
+                        <input type="text" id="commentaire" name="commentaire" class="bt-form-control" required maxlength="200"
+                               placeholder="Ex : réceptionné sans dommage par M. Paul, gérant" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="bt-btn bt-btn-outline" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="bt-btn bt-btn-accent">Confirmer définitivement</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (enAttente || enCours)
+{
+    <!-- Déclaration d'échec -->
+    <div class="modal fade" id="echecModal" tabindex="-1" aria-labelledby="echecModalTitre" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Echec" asp-route-id="@Model.Id" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="echecModalTitre"><i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>Déclarer un échec</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">
+                            La livraison sera clôturée en échec. Le colis reviendra au dépôt et pourra être réaffecté.
+                        </p>
+                        <label for="motif" class="bt-form-label">Motif</label>
+                        <input type="text" id="motif" name="motif" class="bt-form-control" required maxlength="200"
+                               placeholder="Ex : destinataire absent, route impraticable, colis endommagé" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="bt-btn bt-btn-outline" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="bt-btn bt-btn-danger">Enregistrer l'échec</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

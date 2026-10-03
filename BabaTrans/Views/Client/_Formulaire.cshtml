@@ -1,0 +1,33 @@
+@model BabaTrans.Models.Client
+@* Champs communs aux formulaires de création et de modification d'un supermarché *@
+
+<div class="col-md-12">
+    <label asp-for="NomSupermarche" class="bt-form-label"></label>
+    <input asp-for="NomSupermarche" class="bt-form-control" placeholder="Ex : Kin Marché - Gombe" />
+    <span asp-validation-for="NomSupermarche" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="Telephone" class="bt-form-label"></label>
+    <input asp-for="Telephone" class="bt-form-control" type="tel" placeholder="+243 81 234 5678" />
+    <span asp-validation-for="Telephone" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="Email" class="bt-form-label"></label>
+    <input asp-for="Email" class="bt-form-control" placeholder="contact@supermarche.cd" />
+    <span asp-validation-for="Email" class="text-danger small"></span>
+    <div class="bt-form-hint">Le compte Client du supermarché se connecte avec cet email.</div>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="PersonneContact" class="bt-form-label"></label>
+    <input asp-for="PersonneContact" class="bt-form-control" placeholder="Nom du responsable logistique" />
+    <span asp-validation-for="PersonneContact" class="text-danger small"></span>
+</div>
+
+<div class="col-md-12">
+    <label asp-for="Adresse" class="bt-form-label"></label>
+    <textarea asp-for="Adresse" class="bt-form-control" rows="3" placeholder="Adresse, commune, ville (ex : Boulevard du 30 Juin, Gombe, Kinshasa)"></textarea>
+    <span asp-validation-for="Adresse" class="text-danger small"></span>
+</div>

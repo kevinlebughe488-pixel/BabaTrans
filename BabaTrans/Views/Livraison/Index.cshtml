@@ -1,17 +1,24 @@
 @model IEnumerable<BabaTrans.Models.Livraison>
 @{
     ViewData["Title"] = "Gestion des Livraisons & Tournées";
+    var estPersonnel = User.EstPersonnel();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="bt-page-header">
     <div>
-        <h4 class="text-white fw-bold mb-1"><i class="bi bi-send-check text-primary me-2"></i>Expéditions & Livraisons</h4>
-        <div class="text-muted small">Affectation des livreurs, scans au départ et confirmations à l'arrivée</div>
+        <h4 class="fw-bold text-heading">
+            <i class="bi bi-send-check text-primary me-2"></i>@(estPersonnel ? "Expéditions & livraisons" : "Mes livraisons")
+        </h4>
+        <div class="text-muted small">
+            @(estPersonnel
+                ? "Affectation des livreurs, scans au départ et confirmations à l'arrivée"
+                : "Vos tournées : scannez au départ, à l'arrivée, puis confirmez la remise")
+        </div>
     </div>
-    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+    @if (estPersonnel)
     {
         <a asp-action="Create" class="bt-btn bt-btn-primary">
-            <i class="bi bi-plus-lg"></i> Affecter une Livraison
+            <i class="bi bi-plus-lg"></i> Affecter une livraison
         </a>
     }
 </div>
@@ -22,74 +29,69 @@
             <table class="bt-table">
                 <thead>
                     <tr>
-                        <th>N° Livr.</th>
-                        <th>Colis & Code</th>
-                        <th>Supermarché & Destination</th>
-                        <th>Livreur Assigné</th>
+                        <th>N°</th>
+                        <th>Colis</th>
+                        <th>Supermarché & destination</th>
+                        @if (estPersonnel)
+                        {
+                            <th>Livreur</th>
+                        }
                         <th>Véhicule</th>
-                        <th>Scan Départ</th>
-                        <th>Scan Arrivée</th>
+                        <th>Départ</th>
+                        <th>Arrivée</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model != null && Model.Any())
+                    @if (Model.Any())
                     {
                         foreach (var liv in Model)
                         {
-                            var badgeClass = liv.Statut switch {
-                                BabaTrans.Models.StatutLivraison.EnAttente => "bt-badge-warning",
-                                BabaTrans.Models.StatutLivraison.EnCours => "bt-badge-orange",
-                                BabaTrans.Models.StatutLivraison.Livree => "bt-badge-accent",
-                                BabaTrans.Models.StatutLivraison.Echouee => "bt-badge-danger",
-                                _ => "bt-badge-primary"
-                            };
-
                             <tr>
-                                <td class="fw-bold text-white">#@liv.Id</td>
+                                <td class="fw-bold text-heading">#@liv.Id</td>
                                 <td>
-                                    <div class="fw-semibold text-white">Colis #@liv.ColisId</div>
-                                    <span class="badge bg-dark border border-secondary font-monospace text-light">@liv.Colis?.CodeSuivi</span>
+                                    <div class="fw-semibold text-heading">Colis #@liv.ColisId</div>
+                                    <span class="bt-code">@liv.Colis?.CodeSuivi</span>
                                 </td>
                                 <td>
-                                    <div class="text-white">@(liv.Colis?.Commande?.Client?.NomSupermarche ?? "Inconnu")</div>
-                                    <div class="text-accent small"><i class="bi bi-geo-alt me-1"></i>@(liv.Colis?.Commande?.VilleDestination ?? "—")</div>
+                                    <div class="text-heading">@(liv.Colis?.Commande?.Client?.NomSupermarche ?? "Inconnu")</div>
+                                    <div class="text-muted small"><i class="bi bi-geo-alt text-danger me-1"></i>@(liv.Colis?.Commande?.VilleDestination ?? "—")</div>
                                 </td>
-                                <td>
-                                    @if (liv.Livreur != null)
-                                    {
-                                        <div class="fw-semibold text-white"><i class="bi bi-person me-1"></i>@liv.Livreur.Prenom @liv.Livreur.Nom</div>
-                                        <span class="badge bg-secondary-subtle text-light">@liv.Livreur.Immatriculation</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">Non affecté</span>
-                                    }
-                                </td>
+                                @if (estPersonnel)
+                                {
+                                    <td>
+                                        @if (liv.Livreur != null)
+                                        {
+                                            <div class="fw-semibold text-heading">@liv.Livreur.Prenom @liv.Livreur.Nom</div>
+                                            <div class="text-muted small">@liv.Livreur.Immatriculation</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Non affecté</span>
+                                        }
+                                    </td>
+                                }
                                 <td>
                                     @if (liv.MoyenTransport != null)
                                     {
-                                        <div class="fw-semibold text-white"><i class="bi bi-truck me-1"></i>@liv.MoyenTransport.Type</div>
-                                        <span class="badge bg-primary-subtle text-light">@(liv.MoyenTransport.Immatriculation ?? "—")</span>
+                                        <div class="text-heading">@liv.MoyenTransport.Type</div>
+                                        <div class="text-muted small font-monospace">@(liv.MoyenTransport.Immatriculation ?? "—")</div>
                                     }
                                     else
                                     {
                                         <span class="text-muted">—</span>
                                     }
                                 </td>
+                                <td class="text-nowrap">@(liv.DateDepart?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                                <td class="text-nowrap">@(liv.DateArrivee?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
                                 <td>
-                                    @(liv.DateDepart.HasValue ? liv.DateDepart.Value.ToString("dd/MM/yyyy HH:mm") : "—")
-                                </td>
-                                <td>
-                                    @(liv.DateArrivee.HasValue ? liv.DateArrivee.Value.ToString("dd/MM/yyyy HH:mm") : "—")
-                                </td>
-                                <td>
-                                    <span class="bt-badge @badgeClass">@liv.Statut</span>
+                                    <span class="bt-badge @liv.Statut.Badge()">@liv.Statut.Libelle()</span>
                                 </td>
                                 <td class="text-end">
-                                    <a asp-action="Details" asp-route-id="@liv.Id" class="bt-btn bt-btn-outline bt-btn-sm">
-                                        <i class="bi bi-qr-code-scan"></i> Traiter / Scans
+                                    <a asp-action="Details" asp-route-id="@liv.Id" class="bt-btn @(liv.Statut is StatutLivraison.EnAttente or StatutLivraison.EnCours ? "bt-btn-primary" : "bt-btn-outline") bt-btn-sm">
+                                        <i class="bi bi-qr-code-scan"></i>
+                                        @(liv.Statut is StatutLivraison.EnAttente or StatutLivraison.EnCours ? "Traiter" : "Voir")
                                     </a>
                                 </td>
                             </tr>
@@ -98,16 +100,20 @@
                     else
                     {
                         <tr>
-                            <td colspan="9" class="text-center py-5">
+                            <td colspan="@(estPersonnel ? 9 : 8)">
                                 <div class="bt-empty-state">
                                     <i class="bi bi-send-check"></i>
-                                    <h5>Aucune expédition en cours</h5>
-                                    <p>Les agents peuvent affecter les colis préparés à des livreurs pour lancer les acheminements.</p>
-                                    @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+                                    <h5>Aucune livraison</h5>
+                                    @if (estPersonnel)
                                     {
+                                        <p>Affectez les colis prêts à un livreur et à un véhicule pour lancer l'acheminement.</p>
                                         <a asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
                                             <i class="bi bi-plus-lg"></i> Affecter une livraison
                                         </a>
+                                    }
+                                    else
+                                    {
+                                        <p>Aucune tournée ne vous est affectée pour le moment.</p>
                                     }
                                 </div>
                             </td>

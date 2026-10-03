@@ -1,15 +1,9 @@
-@using Microsoft.AspNetCore.Identity
-@using BabaTrans.Models
-@inject UserManager<Utilisateur> UserManager
-@inject SignInManager<Utilisateur> SignInManager
-
 @{
-    var user = await UserManager.GetUserAsync(User);
-    var roles = user != null ? await UserManager.GetRolesAsync(user) : new List<string>();
-    var currentRole = roles.FirstOrDefault() ?? "Utilisateur";
-    var initials = user != null ? $"{user.Prenom?.FirstOrDefault()}{user.Nom?.FirstOrDefault()}".ToUpper() : "BT";
+    // Nom, initiales et rôle viennent du cookie de connexion : aucune requête en base à chaque page.
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+    string Actif(bool condition) => condition ? "active" : "";
 }
 
 <aside class="bt-sidebar" id="sidebarMenu">
@@ -23,54 +17,48 @@
         </div>
     </div>
 
-    <div class="bt-sidebar-nav">
-        <!-- Section Générale -->
+    <nav class="bt-sidebar-nav">
         <div class="nav-section">
             <div class="nav-section-title">Navigation</div>
-            <a class="nav-link @(currentController == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index">
+            <a class="nav-link @Actif(currentController == "Dashboard")" asp-controller="Dashboard" asp-action="Index">
                 <i class="bi bi-grid-1x2-fill"></i>
                 <span>Tableau de bord</span>
             </a>
-            @if (!User.IsInRole("Client"))
-            {
-                <a class="nav-link @(currentController == "Colis" && currentAction == "Suivi" ? "active" : "")" asp-controller="Colis" asp-action="Suivi">
-                    <i class="bi bi-search"></i>
-                    <span>Suivre un colis</span>
-                </a>
-            }
+            <a class="nav-link @Actif(currentController == "Colis" && currentAction == "Suivi")" asp-controller="Colis" asp-action="Suivi">
+                <i class="bi bi-search"></i>
+                <span>Suivre un colis</span>
+            </a>
         </div>
 
-        @if (User.IsInRole("Administrateur") || User.IsInRole("Agent"))
+        @if (User.EstPersonnel())
         {
-            <!-- Section Opérations (Admin & Agent) -->
             <div class="nav-section">
                 <div class="nav-section-title">Opérations Logistiques</div>
-                <a class="nav-link @(currentController == "Client" ? "active" : "")" asp-controller="Client" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Client")" asp-controller="Client" asp-action="Index">
                     <i class="bi bi-shop"></i>
                     <span>Supermarchés (Clients)</span>
                 </a>
-                <a class="nav-link @(currentController == "Commande" ? "active" : "")" asp-controller="Commande" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Commande")" asp-controller="Commande" asp-action="Index">
                     <i class="bi bi-box-seam"></i>
                     <span>Commandes</span>
                 </a>
-                <a class="nav-link @(currentController == "Colis" && currentAction != "Suivi" ? "active" : "")" asp-controller="Colis" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Colis" && currentAction != "Suivi")" asp-controller="Colis" asp-action="Index">
                     <i class="bi bi-qr-code"></i>
                     <span>Colis & Timbres QR</span>
                 </a>
-                <a class="nav-link @(currentController == "Livraison" ? "active" : "")" asp-controller="Livraison" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Livraison")" asp-controller="Livraison" asp-action="Index">
                     <i class="bi bi-send-check"></i>
                     <span>Livraisons & Affectations</span>
                 </a>
             </div>
 
-            <!-- Flotte et Trajets -->
             <div class="nav-section">
                 <div class="nav-section-title">Réseau & Flotte</div>
-                <a class="nav-link @(currentController == "Transport" && currentAction == "Trajets" ? "active" : "")" asp-controller="Transport" asp-action="Trajets">
+                <a class="nav-link @Actif(currentController == "Transport" && currentAction.Contains("Trajet"))" asp-controller="Transport" asp-action="Trajets">
                     <i class="bi bi-geo-alt-fill"></i>
                     <span>Trajets inter-villes</span>
                 </a>
-                <a class="nav-link @(currentController == "Transport" && currentAction == "Moyens" ? "active" : "")" asp-controller="Transport" asp-action="Moyens">
+                <a class="nav-link @Actif(currentController == "Transport" && currentAction.Contains("Moyen"))" asp-controller="Transport" asp-action="Moyens">
                     <i class="bi bi-truck-front-fill"></i>
                     <span>Moyens de Transport</span>
                 </a>
@@ -78,10 +66,9 @@
         }
         else if (User.IsInRole("Livreur"))
         {
-            <!-- Section Livreur -->
             <div class="nav-section">
                 <div class="nav-section-title">Espace Livreur</div>
-                <a class="nav-link @(currentController == "Livraison" ? "active" : "")" asp-controller="Livraison" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Livraison")" asp-controller="Livraison" asp-action="Index">
                     <i class="bi bi-box-arrow-right"></i>
                     <span>Mes Livraisons & Scans</span>
                 </a>
@@ -89,14 +76,13 @@
         }
         else if (User.IsInRole("Client"))
         {
-            <!-- Section Supermarché / Client -->
             <div class="nav-section">
                 <div class="nav-section-title">Espace Supermarché</div>
-                <a class="nav-link @(currentController == "Commande" ? "active" : "")" asp-controller="Commande" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Commande" && currentAction != "Create")" asp-controller="Commande" asp-action="Index">
                     <i class="bi bi-bag-check-fill"></i>
                     <span>Mes Commandes</span>
                 </a>
-                <a class="nav-link @(currentController == "Commande" && currentAction == "Create" ? "active" : "")" asp-controller="Commande" asp-action="Create">
+                <a class="nav-link @Actif(currentController == "Commande" && currentAction == "Create")" asp-controller="Commande" asp-action="Create">
                     <i class="bi bi-plus-circle-fill"></i>
                     <span>Passer une commande</span>
                 </a>
@@ -105,37 +91,30 @@
 
         @if (User.IsInRole("Administrateur"))
         {
-            <!-- Section Administration -->
             <div class="nav-section">
                 <div class="nav-section-title">Administration SI</div>
-                <a class="nav-link @(currentController == "Account" && (currentAction == "Users" || currentAction == "Register") ? "active" : "")" asp-controller="Account" asp-action="Users">
+                <a class="nav-link @Actif(currentController == "Account" && (currentAction == "Users" || currentAction == "Register"))" asp-controller="Account" asp-action="Users">
                     <i class="bi bi-people-fill"></i>
                     <span>Gestion Utilisateurs & RBAC</span>
                 </a>
-                <a class="nav-link @(currentController == "Rapport" ? "active" : "")" asp-controller="Rapport" asp-action="Index">
+                <a class="nav-link @Actif(currentController == "Rapport")" asp-controller="Rapport" asp-action="Index">
                     <i class="bi bi-bar-chart-line-fill"></i>
                     <span>Rapports d'activité</span>
                 </a>
             </div>
         }
-    </div>
+    </nav>
 
-    <!-- Profil bas de sidebar -->
     <div class="bt-sidebar-footer">
         <div class="user-info">
-            <div class="user-avatar">
-                @initials
-            </div>
+            <div class="user-avatar">@User.Initiales()</div>
             <div class="overflow-hidden">
-                <div class="user-name text-truncate">@(user != null ? $"{user.Prenom} {user.Nom}" : "Utilisateur")</div>
-                <div class="user-role">
-                    <span class="badge bg-white text-primary fw-bold shadow-sm">@currentRole</span>
-                </div>
+                <div class="user-name text-truncate">@User.NomComplet()</div>
+                <span class="bt-role-badge">@User.RolePrincipal()</span>
             </div>
         </div>
-        <form asp-controller="Account" asp-action="Logout" method="post" class="mt-2">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="bt-btn bt-btn-outline w-100 justify-content-center bt-btn-sm text-white border-white border-opacity-25" style="background: rgba(255,255,255,0.15);">
+        <form asp-controller="Account" asp-action="Logout" method="post">
+            <button type="submit" class="bt-btn bt-btn-outline bt-btn-sm bt-sidebar-logout">
                 <i class="bi bi-box-arrow-right"></i> Déconnexion
             </button>
         </form>

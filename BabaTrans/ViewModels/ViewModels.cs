@@ -69,8 +69,14 @@ namespace BabaTrans.ViewModels
         public int LivraisonsConfirmees { get; set; }
         public int CommandesEnAttente { get; set; }
         public int ColisLivres { get; set; }
-        public List<dynamic>? DerniersCommandes { get; set; }
-        public List<dynamic>? DerniereActivites { get; set; }
+
+        // Livreur
+        public int LivraisonsEnAttente { get; set; }
+        public int LivraisonsEnCours { get; set; }
+
+        // Flux logistique (Administrateur / Agent) : volume réel à chaque étape
+        public int ColisAAffecter { get; set; }
+        public int LivraisonsAttenteDepart { get; set; }
     }
 
     public class SuiviColisViewModel
@@ -78,5 +84,48 @@ namespace BabaTrans.ViewModels
         public string? CodeSuivi { get; set; }
         public Models.Colis? Colis { get; set; }
         public bool Recherche { get; set; }
+
+        /// <summary>
+        /// Vrai pour le personnel BABA-Trans et le supermarché propriétaire du colis.
+        /// Les autres visiteurs voient seulement l'avancement, sans données nominatives.
+        /// </summary>
+        public bool AccesComplet { get; set; }
+
+        /// <summary>Livraisons du colis, de la plus récente à la plus ancienne.</summary>
+        public List<Models.Livraison> Livraisons { get; set; } = new();
+    }
+
+    public class RapportViewModel
+    {
+        public int TotalClients { get; set; }
+        public int ClientsActifs { get; set; }
+
+        public int TotalCommandes { get; set; }
+        public int CommandesEnAttente { get; set; }
+        public int CommandesEnCours { get; set; }
+        public int CommandesLivrees { get; set; }
+        public int CommandesAnnulees { get; set; }
+
+        public int TotalColis { get; set; }
+        public int ColisAvecTimbre { get; set; }
+        public int ColisEnTransit { get; set; }
+        public int ColisLivres { get; set; }
+
+        public int TotalLivraisons { get; set; }
+        public int LivraisonsConfirmees { get; set; }
+        public int LivraisonsEnCours { get; set; }
+        public int LivraisonsEchouees { get; set; }
+
+        public int TotalMoyensTransport { get; set; }
+        public int MoyensDisponibles { get; set; }
+        public int TotalTrajets { get; set; }
+
+        /// <summary>Part des livraisons terminées (réussies ou échouées) qui ont réussi.</summary>
+        public int TauxReussite => LivraisonsConfirmees + LivraisonsEchouees == 0
+            ? 0
+            : (int)Math.Round(100.0 * LivraisonsConfirmees / (LivraisonsConfirmees + LivraisonsEchouees));
+
+        public List<Models.Commande> DernieresCommandes { get; set; } = new();
+        public List<Models.Livraison> DernieresLivraisons { get; set; } = new();
     }
 }

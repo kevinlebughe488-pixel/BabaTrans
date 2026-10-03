@@ -57,6 +57,10 @@ namespace BabaTrans.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Commande>()
+                .Property(c => c.PoidsEstimeKg)
+                .HasPrecision(10, 2);
+
+            builder.Entity<Commande>()
                 .HasOne(c => c.Trajet)
                 .WithMany(t => t.Commandes)
                 .HasForeignKey(c => c.TrajetId)

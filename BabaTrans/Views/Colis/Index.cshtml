@@ -1,19 +1,20 @@
 @model IEnumerable<BabaTrans.Models.Colis>
 @{
     ViewData["Title"] = "Gestion des Colis & Timbres QR";
+    var colisAvecTimbre = ViewBag.ColisAvecTimbre as HashSet<int> ?? new HashSet<int>();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="bt-page-header">
     <div>
-        <h4 class="text-white fw-bold mb-1"><i class="bi bi-qr-code-scan text-primary me-2"></i>Colis & Timbres QR-Code</h4>
-        <div class="text-muted small">Traçabilité numérique des marchandises et génération des timbres sécurisés</div>
+        <h4 class="fw-bold text-heading"><i class="bi bi-qr-code-scan text-primary me-2"></i>Colis & timbres QR-code</h4>
+        <div class="text-muted small">Traçabilité numérique des marchandises et timbres sécurisés</div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="bt-page-actions">
         <a asp-action="Suivi" class="bt-btn bt-btn-outline">
-            <i class="bi bi-search"></i> Module de Suivi
+            <i class="bi bi-search"></i> Suivre un colis
         </a>
         <a asp-action="Create" class="bt-btn bt-btn-primary">
-            <i class="bi bi-plus-lg"></i> Enregistrer un Colis
+            <i class="bi bi-plus-lg"></i> Enregistrer un colis
         </a>
     </div>
 </div>
@@ -25,46 +26,34 @@
                 <thead>
                     <tr>
                         <th>N° Colis</th>
-                        <th>Code de Suivi</th>
-                        <th>Commande & Supermarché</th>
+                        <th>Code de suivi</th>
+                        <th>Commande</th>
                         <th>Description</th>
                         <th>Poids</th>
-                        <th>Timbre QR-Code</th>
+                        <th>Timbre QR</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model != null && Model.Any())
+                    @if (Model.Any())
                     {
                         foreach (var colis in Model)
                         {
-                            var badgeClass = colis.Statut switch {
-                                BabaTrans.Models.StatutColis.Enregistre => "bt-badge-warning",
-                                BabaTrans.Models.StatutColis.QRCodeGenere => "bt-badge-info",
-                                BabaTrans.Models.StatutColis.EnTransit => "bt-badge-orange",
-                                BabaTrans.Models.StatutColis.Arrive => "bt-badge-primary",
-                                BabaTrans.Models.StatutColis.Livre => "bt-badge-accent",
-                                BabaTrans.Models.StatutColis.Retourne => "bt-badge-danger",
-                                _ => "bt-badge-primary"
-                            };
-
                             <tr>
-                                <td class="fw-bold text-white">#@colis.Id</td>
+                                <td class="fw-bold text-heading">#@colis.Id</td>
+                                <td><span class="bt-code">@colis.CodeSuivi</span></td>
                                 <td>
-                                    <span class="badge bg-dark border border-secondary font-monospace text-light">@colis.CodeSuivi</span>
-                                </td>
-                                <td>
-                                    <div class="fw-semibold text-white">CMD-@colis.CommandeId</div>
-                                    <div class="text-muted small">@colis.Commande?.Client?.NomSupermarche</div>
+                                    <a asp-controller="Commande" asp-action="Details" asp-route-id="@colis.CommandeId" class="fw-semibold text-decoration-none">CMD-@colis.CommandeId</a>
+                                    <div class="text-muted small">@colis.Commande?.Client?.NomSupermarche → @colis.Commande?.VilleDestination</div>
                                 </td>
                                 <td>@colis.Description</td>
-                                <td><span class="badge bg-secondary">@colis.Poids kg</span></td>
+                                <td class="text-nowrap">@colis.Poids kg</td>
                                 <td>
-                                    @if (colis.TimbreQRCode != null && !string.IsNullOrEmpty(colis.TimbreQRCode.ImageBase64))
+                                    @if (colisAvecTimbre.Contains(colis.Id))
                                     {
                                         <div class="d-flex align-items-center gap-2">
-                                            <img src="data:image/png;base64,@colis.TimbreQRCode.ImageBase64" alt="QR" style="width: 32px; height: 32px; border-radius: 4px; background: white; padding: 2px;" />
+                                            <img src="@Url.Action("QRImage", new { id = colis.Id })" alt="QR du colis #@colis.Id" width="32" height="32" loading="lazy" class="rounded border" />
                                             <span class="bt-badge bt-badge-accent">Généré</span>
                                         </div>
                                     }
@@ -74,14 +63,12 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="bt-badge @badgeClass">@colis.Statut</span>
+                                    <span class="bt-badge @colis.Statut.Badge()">@colis.Statut.Libelle()</span>
                                 </td>
                                 <td class="text-end">
-                                    <div class="btn-group">
-                                        <a asp-action="Details" asp-route-id="@colis.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Voir timbre et détails">
-                                            <i class="bi bi-eye"></i> Fiche & QR
-                                        </a>
-                                    </div>
+                                    <a asp-action="Details" asp-route-id="@colis.Id" class="bt-btn bt-btn-outline bt-btn-sm" title="Voir le timbre et les détails">
+                                        <i class="bi bi-eye"></i> Fiche & QR
+                                    </a>
                                 </td>
                             </tr>
                         }
@@ -89,11 +76,11 @@
                     else
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-5">
+                            <td colspan="8">
                                 <div class="bt-empty-state">
                                     <i class="bi bi-qr-code"></i>
                                     <h5>Aucun colis enregistré</h5>
-                                    <p>Enregistrez un nouveau colis pour générer automatiquement son timbre QR-Code.</p>
+                                    <p>Enregistrez un colis pour générer automatiquement son timbre QR-code.</p>
                                     <a asp-action="Create" class="bt-btn bt-btn-primary bt-btn-sm">
                                         <i class="bi bi-plus-lg"></i> Enregistrer un colis
                                     </a>

@@ -1,71 +1,73 @@
+@model BabaTrans.ViewModels.RapportViewModel
 @{
-    ViewData["Title"] = "Rapports & Statistiques SI";
-    var rapport = ViewBag.Rapport;
-    var dernieresCommandes = ViewBag.DernieresCommandes as List<BabaTrans.Models.Commande>;
-    var dernieresLivraisons = ViewBag.DernieresLivraisons as List<BabaTrans.Models.Livraison>;
+    ViewData["Title"] = "Rapports & Statistiques";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="bt-page-header">
     <div>
-        <h4 class="text-white fw-bold mb-1"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Rapports d'Activité & Indicateurs SI</h4>
-        <div class="text-muted small">Synthèse globale des performances du réseau logistique BABA-Trans en RDC</div>
+        <h4 class="fw-bold text-heading"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Rapport d'activité</h4>
+        <div class="text-muted small">Synthèse du réseau logistique BABA-Trans au @DateTime.Now.ToString("dd MMMM yyyy 'à' HH:mm")</div>
     </div>
-    <button onclick="window.print()" class="bt-btn bt-btn-outline">
-        <i class="bi bi-printer"></i> Imprimer le Rapport
+    <button type="button" onclick="window.print()" class="bt-btn bt-btn-outline">
+        <i class="bi bi-printer"></i> Imprimer le rapport
     </button>
 </div>
 
-<!-- Synthèse générale -->
+<!-- Synthèse -->
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="bt-stat-card stat-primary">
             <div class="stat-icon"><i class="bi bi-shop"></i></div>
-            <div class="stat-value">@rapport.TotalClients</div>
-            <div class="stat-label">Supermarchés Clients (@rapport.ClientsActifs actifs)</div>
+            <div class="stat-value">@Model.ClientsActifs</div>
+            <div class="stat-label">Supermarchés actifs (sur @Model.TotalClients)</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="bt-stat-card stat-warning">
             <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
-            <div class="stat-value">@rapport.TotalCommandes</div>
-            <div class="stat-label">Commandes Enregistrées</div>
+            <div class="stat-value">@Model.TotalCommandes</div>
+            <div class="stat-label">Commandes enregistrées</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="bt-stat-card stat-orange">
             <div class="stat-icon"><i class="bi bi-qr-code"></i></div>
-            <div class="stat-value">@rapport.TotalColis</div>
-            <div class="stat-label">Colis avec Timbres QR</div>
+            <div class="stat-value">@Model.TotalColis</div>
+            <div class="stat-label">Colis enregistrés (@Model.ColisAvecTimbre avec timbre QR)</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="bt-stat-card stat-accent">
             <div class="stat-icon"><i class="bi bi-check2-all"></i></div>
-            <div class="stat-value">@rapport.LivraisonsConfirmees</div>
-            <div class="stat-label">Livraisons Réussies</div>
+            <div class="stat-value">@Model.TauxReussite %</div>
+            <div class="stat-label">Taux de réussite des livraisons (@Model.LivraisonsConfirmees réussies, @Model.LivraisonsEchouees échouées)</div>
         </div>
     </div>
 </div>
 
-<!-- Répartition par état -->
+<!-- Répartitions -->
 <div class="row g-4 mb-4">
     <div class="col-md-6">
         <div class="bt-card h-100">
             <div class="bt-card-header">
-                <h5><i class="bi bi-pie-chart text-info me-2"></i>État des Commandes</h5>
+                <h5><i class="bi bi-pie-chart text-primary me-2"></i>État des commandes</h5>
             </div>
             <div class="bt-card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
+                <div class="bt-stat-row">
                     <span><i class="bi bi-hourglass-split text-warning me-2"></i>En attente de traitement</span>
-                    <span class="badge bg-warning text-dark fs-6">@rapport.CommandesEnAttente</span>
+                    <span class="bt-badge bt-badge-warning bt-stat-number">@Model.CommandesEnAttente</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
+                <div class="bt-stat-row">
                     <span><i class="bi bi-truck text-primary me-2"></i>En cours d'acheminement</span>
-                    <span class="badge bg-primary fs-6">@rapport.CommandesEnCours</span>
+                    <span class="bt-badge bt-badge-orange bt-stat-number">@Model.CommandesEnCours</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center p-2 rounded bg-dark border border-secondary">
-                    <span><i class="bi bi-check-circle text-accent me-2"></i>Livrées et conformes</span>
-                    <span class="badge bg-success fs-6">@rapport.CommandesLivrees</span>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-check-circle text-success me-2"></i>Livrées</span>
+                    <span class="bt-badge bt-badge-accent bt-stat-number">@Model.CommandesLivrees</span>
+                </div>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-x-circle text-danger me-2"></i>Annulées</span>
+                    <span class="bt-badge bt-badge-danger bt-stat-number">@Model.CommandesAnnulees</span>
                 </div>
             </div>
         </div>
@@ -74,20 +76,24 @@
     <div class="col-md-6">
         <div class="bt-card h-100">
             <div class="bt-card-header">
-                <h5><i class="bi bi-speedometer2 text-accent me-2"></i>Réseau & Moyens Matériels</h5>
+                <h5><i class="bi bi-speedometer2 text-primary me-2"></i>Réseau & moyens matériels</h5>
             </div>
             <div class="bt-card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
-                    <span><i class="bi bi-geo-alt text-primary me-2"></i>Trajets et lignes inter-urbaines</span>
-                    <span class="badge bg-info fs-6">@rapport.TotalTrajets lignes</span>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-geo-alt text-primary me-2"></i>Trajets inter-villes</span>
+                    <span class="bt-stat-number">@Model.TotalTrajets</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-dark border border-secondary">
-                    <span><i class="bi bi-truck-front text-accent me-2"></i>Véhicules et flotte disponible</span>
-                    <span class="badge bg-accent text-dark fs-6" style="background-color: var(--bt-accent);">@rapport.TotalMoyensTransport véhicules</span>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-truck-front text-success me-2"></i>Véhicules disponibles</span>
+                    <span class="bt-stat-number">@Model.MoyensDisponibles / @Model.TotalMoyensTransport</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center p-2 rounded bg-dark border border-secondary">
-                    <span><i class="bi bi-boxes text-warning me-2"></i>Colis actuellement en transit</span>
-                    <span class="badge bg-warning text-dark fs-6">@rapport.ColisEnTransit colis</span>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-boxes text-warning me-2"></i>Colis en transit ou arrivés</span>
+                    <span class="bt-stat-number">@Model.ColisEnTransit</span>
+                </div>
+                <div class="bt-stat-row">
+                    <span><i class="bi bi-send text-primary me-2"></i>Livraisons en cours</span>
+                    <span class="bt-stat-number">@Model.LivraisonsEnCours</span>
                 </div>
             </div>
         </div>
@@ -99,7 +105,7 @@
     <div class="col-lg-6">
         <div class="bt-card">
             <div class="bt-card-header">
-                <h5>Dernières Commandes Passées</h5>
+                <h5>Dernières commandes</h5>
             </div>
             <div class="bt-card-body p-0">
                 <div class="table-responsive">
@@ -113,15 +119,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if (dernieresCommandes != null && dernieresCommandes.Any())
+                            @if (Model.DernieresCommandes.Any())
                             {
-                                foreach (var cmd in dernieresCommandes)
+                                foreach (var cmd in Model.DernieresCommandes)
                                 {
                                     <tr>
-                                        <td class="fw-bold text-white">CMD-@cmd.Id</td>
+                                        <td class="fw-bold">
+                                            <a asp-controller="Commande" asp-action="Details" asp-route-id="@cmd.Id" class="text-decoration-none">CMD-@cmd.Id</a>
+                                        </td>
                                         <td>@(cmd.Client?.NomSupermarche ?? "Inconnu")</td>
-                                        <td>@cmd.DateCommande.ToString("dd/MM/yyyy")</td>
-                                        <td><span class="bt-badge bt-badge-primary">@cmd.Statut</span></td>
+                                        <td class="text-nowrap">@cmd.DateCommande.ToString("dd/MM/yyyy")</td>
+                                        <td><span class="bt-badge @cmd.Statut.Badge()">@cmd.Statut.Libelle()</span></td>
                                     </tr>
                                 }
                             }
@@ -139,35 +147,37 @@
     <div class="col-lg-6">
         <div class="bt-card">
             <div class="bt-card-header">
-                <h5>Dernières Expéditions & Scans</h5>
+                <h5>Dernières livraisons</h5>
             </div>
             <div class="bt-card-body p-0">
                 <div class="table-responsive">
                     <table class="bt-table">
                         <thead>
                             <tr>
-                                <th>Livr.</th>
+                                <th>Réf</th>
                                 <th>Colis</th>
                                 <th>Livreur</th>
                                 <th>Statut</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (dernieresLivraisons != null && dernieresLivraisons.Any())
+                            @if (Model.DernieresLivraisons.Any())
                             {
-                                foreach (var liv in dernieresLivraisons)
+                                foreach (var liv in Model.DernieresLivraisons)
                                 {
                                     <tr>
-                                        <td class="fw-bold text-white">#@liv.Id</td>
-                                        <td>Colis #@liv.ColisId</td>
+                                        <td class="fw-bold">
+                                            <a asp-controller="Livraison" asp-action="Details" asp-route-id="@liv.Id" class="text-decoration-none">#@liv.Id</a>
+                                        </td>
+                                        <td><span class="bt-code">@(liv.Colis?.CodeSuivi ?? $"Colis #{liv.ColisId}")</span></td>
                                         <td>@(liv.Livreur != null ? $"{liv.Livreur.Prenom} {liv.Livreur.Nom}" : "—")</td>
-                                        <td><span class="bt-badge bt-badge-accent">@liv.Statut</span></td>
+                                        <td><span class="bt-badge @liv.Statut.Badge()">@liv.Statut.Libelle()</span></td>
                                     </tr>
                                 }
                             }
                             else
                             {
-                                <tr><td colspan="4" class="text-center py-3 text-muted">Aucune expédition</td></tr>
+                                <tr><td colspan="4" class="text-center py-3 text-muted">Aucune livraison</td></tr>
                             }
                         </tbody>
                     </table>

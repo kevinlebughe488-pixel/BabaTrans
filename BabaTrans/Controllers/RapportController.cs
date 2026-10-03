@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BabaTrans.Data;
 using BabaTrans.Models;
+using BabaTrans.ViewModels;
 
 namespace BabaTrans.Controllers
 {
@@ -19,42 +20,60 @@ namespace BabaTrans.Controllers
         // GET: Rapport
         public async Task<IActionResult> Index()
         {
-            var rapport = new
+            // Un comptage groupé par statut remplace une dizaine de requêtes COUNT séparées.
+            var commandes = await _context.Commandes
+                .GroupBy(c => c.Statut)
+                .Select(g => new { Statut = g.Key, Nombre = g.Count() })
+                .ToDictionaryAsync(x => x.Statut, x => x.Nombre);
+            var colis = await _context.Colis
+                .GroupBy(c => c.Statut)
+                .Select(g => new { Statut = g.Key, Nombre = g.Count() })
+                .ToDictionaryAsync(x => x.Statut, x => x.Nombre);
+            var livraisons = await _context.Livraisons
+                .GroupBy(l => l.Statut)
+                .Select(g => new { Statut = g.Key, Nombre = g.Count() })
+                .ToDictionaryAsync(x => x.Statut, x => x.Nombre);
+
+            var model = new RapportViewModel
             {
                 TotalClients = await _context.Clients.CountAsync(),
                 ClientsActifs = await _context.Clients.CountAsync(c => c.EstActif),
-                TotalCommandes = await _context.Commandes.CountAsync(),
-                CommandesEnAttente = await _context.Commandes.CountAsync(c => c.Statut == StatutCommande.EnAttente),
-                CommandesEnCours = await _context.Commandes.CountAsync(c => c.Statut == StatutCommande.EnCours),
-                CommandesLivrees = await _context.Commandes.CountAsync(c => c.Statut == StatutCommande.Livree),
-                TotalColis = await _context.Colis.CountAsync(),
-                ColisEnTransit = await _context.Colis.CountAsync(c => c.Statut == StatutColis.EnTransit),
-                ColisLivres = await _context.Colis.CountAsync(c => c.Statut == StatutColis.Livre),
-                TotalLivraisons = await _context.Livraisons.CountAsync(),
-                LivraisonsConfirmees = await _context.Livraisons.CountAsync(l => l.Statut == StatutLivraison.Livree),
-                LivraisonsEnCours = await _context.Livraisons.CountAsync(l => l.Statut == StatutLivraison.EnCours),
+
+                TotalCommandes = commandes.Values.Sum(),
+                CommandesEnAttente = commandes.GetValueOrDefault(StatutCommande.EnAttente),
+                CommandesEnCours = commandes.GetValueOrDefault(StatutCommande.EnCours),
+                CommandesLivrees = commandes.GetValueOrDefault(StatutCommande.Livree),
+                CommandesAnnulees = commandes.GetValueOrDefault(StatutCommande.Annulee),
+
+                TotalColis = colis.Values.Sum(),
+                ColisAvecTimbre = await _context.TimbresQRCode.CountAsync(),
+                ColisEnTransit = colis.GetValueOrDefault(StatutColis.EnTransit) + colis.GetValueOrDefault(StatutColis.Arrive),
+                ColisLivres = colis.GetValueOrDefault(StatutColis.Livre),
+
+                TotalLivraisons = livraisons.Values.Sum(),
+                LivraisonsConfirmees = livraisons.GetValueOrDefault(StatutLivraison.Livree),
+                LivraisonsEnCours = livraisons.GetValueOrDefault(StatutLivraison.EnCours),
+                LivraisonsEchouees = livraisons.GetValueOrDefault(StatutLivraison.Echouee),
+
                 TotalMoyensTransport = await _context.MoyensTransport.CountAsync(),
-                TotalTrajets = await _context.Trajets.CountAsync()
+                MoyensDisponibles = await _context.MoyensTransport.CountAsync(m => m.EstDisponible),
+                TotalTrajets = await _context.Trajets.CountAsync(),
+
+                DernieresCommandes = await _context.Commandes
+                    .Include(c => c.Client)
+                    .OrderByDescending(c => c.DateCommande)
+                    .Take(10)
+                    .ToListAsync(),
+
+                DernieresLivraisons = await _context.Livraisons
+                    .Include(l => l.Colis)
+                    .Include(l => l.Livreur)
+                    .OrderByDescending(l => l.Id)
+                    .Take(10)
+                    .ToListAsync()
             };
 
-            ViewBag.Rapport = rapport;
-
-            // Dernières commandes
-            ViewBag.DernieresCommandes = await _context.Commandes
-                .Include(c => c.Client)
-                .OrderByDescending(c => c.DateCommande)
-                .Take(10)
-                .ToListAsync();
-
-            // Dernières livraisons
-            ViewBag.DernieresLivraisons = await _context.Livraisons
-                .Include(l => l.Colis)
-                .Include(l => l.Livreur)
-                .OrderByDescending(l => l.Id)
-                .Take(10)
-                .ToListAsync();
-
-            return View();
+            return View(model);
         }
     }
 }

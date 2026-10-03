@@ -31,7 +31,7 @@ namespace BabaTrans.Models
         public string? CodeSuivi { get; set; }
 
         // Relations
-        [Required]
+        [Required(ErrorMessage = "Sélectionnez une commande.")]
         [Display(Name = "Commande")]
         public int CommandeId { get; set; }
         [ForeignKey("CommandeId")]
