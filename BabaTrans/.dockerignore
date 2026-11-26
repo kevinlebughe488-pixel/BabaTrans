@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+.git/
+appsettings.Development.json
+Properties/launchSettings.json
